@@ -99,7 +99,8 @@
         const Icon = ({ name, size = 24, className = "", color="currentColor" }) => {
             const ref = React.useRef();
             React.useEffect(() => {
-                if (ref.current) {
+                if (ref.current && lucide.icons[name]) {
+                    ref.current.innerHTML = `<i data-lucide="${name}"></i>`;
                     lucide.createIcons({
                         icons: { [name]: lucide.icons[name] },
                         nameAttr: 'data-lucide',
@@ -107,7 +108,7 @@
                     });
                 }
             }, [name, size, className, color]);
-            return <i ref={ref} data-lucide={name}></i>;
+            return <span ref={ref} className="inline-flex items-center justify-center"></span>;
         };
 
         // --- RENDERIZADOR DE TEXTO ENRIQUECIDO (Markdown Básico) ---
