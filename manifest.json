@@ -1,0 +1,16 @@
+{
+  "name": "LingoTube",
+  "short_name": "LingoTube",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#111b21",
+  "theme_color": "#58cc02",
+  "icons": [
+    {
+      "src": "./logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
