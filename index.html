@@ -612,11 +612,6 @@
 
             const renderLearnTab = () => {
                 const classes = Array.from({ length: TOTAL_CLASSES }, (_, i) => i + 1);
-                const completedInLevel = data.completed[currentLevel] || [];
-                const reviewsInLevel = data.reviews[currentLevel] || [];
-                
-                let nextUp = classes.find(c => !completedInLevel.includes(c));
-                if (!nextUp) nextUp = classes.find(c => !reviewsInLevel.includes(c)) || TOTAL_CLASSES + 1;
 
                 return (
                     <div className="pb-24 pt-20 px-4 max-w-md mx-auto relative">
@@ -629,75 +624,87 @@
                             ))}
                         </div>
 
-                        <div className="mb-8 flex items-center justify-between bg-surface p-4 rounded-2xl">
-                            <div><h2 className="font-bold text-lg">Progreso de Nivel</h2><p className="text-sm text-duotext"><span className="text-duogreen">{completedInLevel.length} Clases</span> / <span className="text-duogold">{reviewsInLevel.length} Repasos</span></p></div>
-                            <div className="text-right"><div className="text-xl font-bold text-duogreen">{Math.round((completedInLevel.length / TOTAL_CLASSES) * 100)}%</div></div>
-                        </div>
-
-                        <div className="flex flex-col items-center relative">
-                            {classes.map((cls, index) => {
-                                const isClassCompleted = completedInLevel.includes(cls);
-                                const isReviewCompleted = reviewsInLevel.includes(cls);
-                                const isCurrent = cls === nextUp;
-                                const isBookmarked = data.bookmarks[currentLevel].includes(cls);
-                                const hasNote = !!data.notes[`${currentLevel}-${cls}`] || !!data.chunks[`${currentLevel}-${cls}`];
-                                const offset = getOffset(index);
-                                
-                                let bgColor = 'bg-surface', borderColor = 'border-duogray', iconColor = '#afbac0', extraClasses = '', iconName = hasNote ? "BookOpen" : "Play";
-
-                                if (isBookmarked && !isCurrent) { borderColor = 'border-orange-500'; extraClasses += ' shadow-[0_0_10px_rgba(249,115,22,0.3)]'; }
-
-                                if (isReviewCompleted) { bgColor = 'bg-duogold'; borderColor = 'border-duogoldDark'; iconColor = '#ffffff'; iconName = "Check"; } 
-                                else if (isClassCompleted) {
-                                    if (isCurrent) { bgColor = 'bg-duogold'; borderColor = 'border-duogoldDark'; iconColor = '#ffffff'; extraClasses += ' animate-bounce-slow shadow-[0_0_20px_rgba(255,200,0,0.5)]'; iconName = "RotateCw"; } 
-                                    else { bgColor = 'bg-duogreen'; borderColor = 'border-duogreenDark'; iconColor = '#ffffff'; iconName = "Check"; }
-                                } else {
-                                    if (isCurrent) { bgColor = 'bg-duogreen'; borderColor = 'border-duogreenDark'; iconColor = '#ffffff'; extraClasses += ' animate-bounce-slow shadow-[0_0_20px_rgba(88,204,2,0.5)]'; } 
-                                    else { extraClasses += ' opacity-70'; }
-                                }
-
-                                const connectorBg = reviewsInLevel.includes(cls + 1) ? 'bg-duogold' : completedInLevel.includes(cls + 1) ? 'bg-duogreen' : 'bg-surface';
-
-                                return (
-                                    <div key={cls} className="relative flex flex-col items-center mb-6">
-                                        <div className={`absolute w-3 h-16 -bottom-10 -z-10 transition-colors duration-500 ${connectorBg}`} style={{ transform: `translateX(${(getOffset(index + 1) - offset) / 2}px) rotate(${Math.atan2(100, getOffset(index + 1) - offset) * (180/Math.PI) - 90}deg)`, transformOrigin: 'top center', borderRadius: '4px' }} />
-                                        <button ref={isCurrent ? activeNodeRef : null} onClick={() => setSelectedClass(cls)} className={`path-node w-16 h-16 rounded-full border-b-4 flex items-center justify-center transition-all ${bgColor} ${borderColor} ${extraClasses}`} style={{ transform: `translateX(${offset}px)` }}><Icon name={iconName} color={iconColor} size={28} className={iconName === 'Play' ? 'ml-1' : ''} /></button>
-                                        <div className="absolute top-12 font-bold text-xs bg-darker px-2 py-1 rounded-full border border-surface shadow-sm" style={{ transform: `translateX(${offset}px)` }}>Clase {cls}</div>
-                                        {isBookmarked && <div className="absolute top-0 right-0 text-orange-500 bg-darker rounded-full p-0.5" style={{ transform: `translateX(${offset + 20}px)` }}><Icon name="Bookmark" size={14} /></div>}
-                                    </div>
-                                );
-                            })}
+                        {['beginner', 'intermediate', 'advanced'].map(levelKey => {
+                            const completedInLevel = data.completed[levelKey] || [];
+                            const reviewsInLevel = data.reviews[levelKey] || [];
                             
-                            {(() => {
-                                const isSilver = completedInLevel.length === TOTAL_CLASSES;
-                                const isGold = reviewsInLevel.length === TOTAL_CLASSES;
-                                const isCurrentTrophy = nextUp === TOTAL_CLASSES + 1;
-                                const trophyOffset = getOffset(TOTAL_CLASSES);
-                                
-                                let trophyImage = null;
-                                let title = 'Trofeo Bloqueado';
-                                let trophyClass = 'opacity-60 grayscale';
+                            let nextUp = classes.find(c => !completedInLevel.includes(c));
+                            if (!nextUp) nextUp = classes.find(c => !reviewsInLevel.includes(c)) || TOTAL_CLASSES + 1;
 
-                                if (isGold) { 
-                                    title = '¡Dominio Dorado!'; 
-                                    trophyClass = 'drop-shadow-[0_0_40px_rgba(255,200,0,0.6)] animate-bounce-slow z-10 scale-110';
-                                    trophyImage = './gold_trophy.png';
-                                } else if (isSilver) { 
-                                    title = '¡Curso de Plata!'; 
-                                    trophyClass = 'drop-shadow-[0_0_30px_rgba(229,231,235,0.5)] animate-bounce-slow z-10 scale-110';
-                                    trophyImage = './silver_trophy.png';
-                                }
-
-                                return (
-                                    <div ref={isCurrentTrophy ? activeNodeRef : null} className="relative flex flex-col items-center mt-16 mb-10">
-                                        <div className={`w-36 h-36 flex items-center justify-center transition-all duration-700 ${trophyClass}`} style={{ transform: `translateX(${trophyOffset}px)` }} onClick={() => { if(isGold) confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ['#ffc800', '#ffffff'] }); else if(isSilver) confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ['#e5e7eb', '#9ca3af', '#ffffff'] }); }}>
-                                            {trophyImage ? <img src={trophyImage} alt={title} className="w-full h-full object-contain" /> : <div className="w-24 h-24 rounded-full bg-surface border-4 border-dashed border-duogray flex items-center justify-center"><Icon name="Lock" size={32} color="#afbac0" /></div>}
-                                        </div>
-                                        <div className="absolute top-32 font-bold text-sm bg-darker/90 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 shadow-xl text-center z-20 text-white whitespace-nowrap" style={{ transform: `translateX(${trophyOffset}px)` }}>{title}</div>
+                            return (
+                                <div key={levelKey} style={{ display: currentLevel === levelKey ? 'block' : 'none' }}>
+                                    <div className="mb-8 flex items-center justify-between bg-surface p-4 rounded-2xl">
+                                        <div><h2 className="font-bold text-lg">Progreso de Nivel</h2><p className="text-sm text-duotext"><span className="text-duogreen">{completedInLevel.length} Clases</span> / <span className="text-duogold">{reviewsInLevel.length} Repasos</span></p></div>
+                                        <div className="text-right"><div className="text-xl font-bold text-duogreen">{Math.round((completedInLevel.length / TOTAL_CLASSES) * 100)}%</div></div>
                                     </div>
-                                );
-                            })()}
-                        </div>
+
+                                    <div className="flex flex-col items-center relative">
+                                        {classes.map((cls, index) => {
+                                            const isClassCompleted = completedInLevel.includes(cls);
+                                            const isReviewCompleted = reviewsInLevel.includes(cls);
+                                            const isCurrent = cls === nextUp;
+                                            const isBookmarked = data.bookmarks[levelKey].includes(cls);
+                                            const hasNote = !!data.notes[`${levelKey}-${cls}`] || !!data.chunks[`${levelKey}-${cls}`];
+                                            const offset = getOffset(index);
+                                            
+                                            let bgColor = 'bg-surface', borderColor = 'border-duogray', iconColor = '#afbac0', extraClasses = '', iconName = hasNote ? "BookOpen" : "Play";
+
+                                            if (isBookmarked && !isCurrent) { borderColor = 'border-orange-500'; extraClasses += ' shadow-[0_0_10px_rgba(249,115,22,0.3)]'; }
+
+                                            if (isReviewCompleted) { bgColor = 'bg-duogold'; borderColor = 'border-duogoldDark'; iconColor = '#ffffff'; iconName = "Check"; } 
+                                            else if (isClassCompleted) {
+                                                if (isCurrent) { bgColor = 'bg-duogold'; borderColor = 'border-duogoldDark'; iconColor = '#ffffff'; extraClasses += ' animate-bounce-slow shadow-[0_0_20px_rgba(255,200,0,0.5)]'; iconName = "RotateCw"; } 
+                                                else { bgColor = 'bg-duogreen'; borderColor = 'border-duogreenDark'; iconColor = '#ffffff'; iconName = "Check"; }
+                                            } else {
+                                                if (isCurrent) { bgColor = 'bg-duogreen'; borderColor = 'border-duogreenDark'; iconColor = '#ffffff'; extraClasses += ' animate-bounce-slow shadow-[0_0_20px_rgba(88,204,2,0.5)]'; } 
+                                                else { extraClasses += ' opacity-70'; }
+                                            }
+
+                                            const connectorBg = reviewsInLevel.includes(cls + 1) ? 'bg-duogold' : completedInLevel.includes(cls + 1) ? 'bg-duogreen' : 'bg-surface';
+
+                                            return (
+                                                <div key={cls} className="relative flex flex-col items-center mb-6">
+                                                    <div className={`absolute w-3 h-16 -bottom-10 -z-10 transition-colors duration-500 ${connectorBg}`} style={{ transform: `translateX(${(getOffset(index + 1) - offset) / 2}px) rotate(${Math.atan2(100, getOffset(index + 1) - offset) * (180/Math.PI) - 90}deg)`, transformOrigin: 'top center', borderRadius: '4px' }} />
+                                                    <button ref={isCurrent && currentLevel === levelKey ? activeNodeRef : null} onClick={() => setSelectedClass(cls)} className={`path-node w-16 h-16 rounded-full border-b-4 flex items-center justify-center transition-all ${bgColor} ${borderColor} ${extraClasses}`} style={{ transform: `translateX(${offset}px)` }}><Icon name={iconName} color={iconColor} size={28} className={iconName === 'Play' ? 'ml-1' : ''} /></button>
+                                                    <div className="absolute top-12 font-bold text-xs bg-darker px-2 py-1 rounded-full border border-surface shadow-sm" style={{ transform: `translateX(${offset}px)` }}>Clase {cls}</div>
+                                                    {isBookmarked && <div className="absolute top-0 right-0 text-orange-500 bg-darker rounded-full p-0.5" style={{ transform: `translateX(${offset + 20}px)` }}><Icon name="Bookmark" size={14} /></div>}
+                                                </div>
+                                            );
+                                        })}
+                                        
+                                        {(() => {
+                                            const isSilver = completedInLevel.length === TOTAL_CLASSES;
+                                            const isGold = reviewsInLevel.length === TOTAL_CLASSES;
+                                            const isCurrentTrophy = nextUp === TOTAL_CLASSES + 1;
+                                            const trophyOffset = getOffset(TOTAL_CLASSES);
+                                            
+                                            let title = 'Trofeo Bloqueado';
+                                            let trophyClass = 'opacity-30 grayscale blur-[2px] scale-90';
+                                            let trophyImage = './silver_trophy.png';
+
+                                            if (isGold) { 
+                                                title = '¡Dominio Dorado!'; 
+                                                trophyClass = 'drop-shadow-[0_0_40px_rgba(255,200,0,0.6)] animate-bounce-slow z-10 scale-110';
+                                                trophyImage = './gold_trophy.png';
+                                            } else if (isSilver) { 
+                                                title = '¡Curso de Plata!'; 
+                                                trophyClass = 'drop-shadow-[0_0_30px_rgba(229,231,235,0.5)] animate-bounce-slow z-10 scale-110';
+                                                trophyImage = './silver_trophy.png';
+                                            }
+
+                                            return (
+                                                <div ref={isCurrentTrophy && currentLevel === levelKey ? activeNodeRef : null} className="relative flex flex-col items-center mt-16 mb-10">
+                                                    <div className={`w-36 h-36 flex items-center justify-center transition-all duration-700 ${trophyClass}`} style={{ transform: `translateX(${trophyOffset}px)` }} onClick={() => { if(isGold) confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ['#ffc800', '#ffffff'] }); else if(isSilver) confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ['#e5e7eb', '#9ca3af', '#ffffff'] }); }}>
+                                                        <img src={trophyImage} alt={title} className="w-full h-full object-contain" />
+                                                    </div>
+                                                    <div className="absolute top-32 font-bold text-sm bg-darker/90 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 shadow-xl text-center z-20 text-white whitespace-nowrap" style={{ transform: `translateX(${trophyOffset}px)` }}>{title}</div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 );
             };
