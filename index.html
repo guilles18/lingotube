@@ -814,6 +814,110 @@
             );
         };
 
+            const SyllabusTab = () => {
+                const [expandedLevels, setExpandedLevels] = React.useState({ 'beginner': true });
+                const [expandedSections, setExpandedSections] = React.useState({});
+
+                const toggleLevel = (level) => {
+                    setExpandedLevels(prev => ({ ...prev, [level]: !prev[level] }));
+                };
+
+                const toggleSection = (level, sectionIdx) => {
+                    const key = `${level}-${sectionIdx}`;
+                    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
+                };
+
+                return (
+                    <div className="pb-32 pt-20 px-4 max-w-md mx-auto relative animate-fade-in">
+                        <div className="text-center mb-8">
+                            <h2 className="text-2xl font-black text-white mb-2 tracking-tight">Temario del Curso</h2>
+                            <p className="text-duotext text-sm">
+                                La estimación de los niveles del Marco Común Europeo de Referencia (A1 - C1) es un análisis educativo deducido de la progresión gramatical.
+                            </p>
+                        </div>
+
+                        <div className="space-y-4">
+                            {SYLLABUS_DATA.map((levelData) => {
+                                const isLevelExpanded = expandedLevels[levelData.level];
+                                return (
+                                    <div key={levelData.level} className={`bg-surface rounded-3xl overflow-hidden shadow-lg border border-${levelData.color}/20 transition-all duration-300`}>
+                                        <div onClick={() => toggleLevel(levelData.level)} className={`p-5 flex items-center justify-between cursor-pointer active:bg-white/5 transition-colors`}>
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 rounded-full bg-${levelData.color}/20 flex items-center justify-center text-${levelData.color}`}><Icon name={levelData.icon} size={20} /></div>
+                                                <div>
+                                                    <h3 className="font-bold text-lg text-white">{levelData.title}</h3>
+                                                    <p className={`text-xs text-${levelData.color} font-bold`}>{levelData.subtitle}</p>
+                                                </div>
+                                            </div>
+                                            <div className={`text-duotext transition-transform duration-300 ${isLevelExpanded ? 'rotate-180' : ''}`}>
+                                                <Icon name="ChevronDown" />
+                                            </div>
+                                        </div>
+                                        
+                                        {isLevelExpanded && (
+                                            <div className="px-5 pb-5 pt-0 animate-slide-up">
+                                                <p className="text-sm text-duotext mb-5 leading-relaxed">{levelData.desc}</p>
+                                                
+                                                <div className="space-y-3">
+                                                    {levelData.sections.map((sec, idx) => {
+                                                        const secKey = `${levelData.level}-${idx}`;
+                                                        const isSecExpanded = expandedSections[secKey];
+                                                        
+                                                        return (
+                                                            <div key={idx} className={`bg-darker rounded-xl border-l-4 border-${levelData.color} overflow-hidden`}>
+                                                                <div onClick={() => toggleSection(levelData.level, idx)} className="p-3 flex items-center justify-between cursor-pointer active:bg-white/5">
+                                                                    <h4 className="font-bold text-white text-sm">Clases {sec.range}: {sec.title}</h4>
+                                                                    <div className={`text-duotext transition-transform duration-300 ${isSecExpanded ? 'rotate-180' : ''}`}>
+                                                                        <Icon name="ChevronDown" size={16} />
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                {isSecExpanded && (
+                                                                    <div className="p-3 pt-0 animate-slide-up">
+                                                                        {sec.points && (
+                                                                            <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                                                                {sec.points.map((point, pIdx) => (
+                                                                                    <li key={pIdx} className="leading-snug">{point}</li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        )}
+                                                                        
+                                                                        {sec.classes && (
+                                                                            <div className="space-y-4 mt-2">
+                                                                                {sec.classes.map(cls => (
+                                                                                    <div key={cls.id} className="bg-surface/50 rounded-lg p-3 border border-white/5">
+                                                                                        <div className="flex items-start gap-2 mb-2">
+                                                                                            <span className={`bg-${levelData.color}/20 text-${levelData.color} text-[10px] font-black px-2 py-0.5 rounded shrink-0 mt-0.5`}>CLASE {cls.id}</span>
+                                                                                            <h5 className="font-bold text-white text-sm leading-tight">{cls.title}</h5>
+                                                                                        </div>
+                                                                                        <div className="pl-1">
+                                                                                            <p className="text-xs text-duotext mb-2 leading-relaxed"><strong className="text-white/70">Tema:</strong> {cls.theme}</p>
+                                                                                            <div className="bg-dark p-2 rounded text-xs text-duoblue italic border-l-2 border-duoblue/30 leading-relaxed">
+                                                                                                {cls.examples}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            };
+
+
+
         const App = () => {
             const { data, toggleProgress, toggleBookmark, toggleReviewedBookmark, toggleRoutinePhase, saveNote, saveChunk, courseData, updateCourseData, exportData, importData, syncFromServer } = useAppStore();
             const [currentTab, setCurrentTab] = React.useState('learn');
@@ -1249,107 +1353,7 @@
                 </div>
             );
 
-            const SyllabusTab = () => {
-                const [expandedLevels, setExpandedLevels] = React.useState({ 'beginner': true });
-                const [expandedSections, setExpandedSections] = React.useState({});
 
-                const toggleLevel = (level) => {
-                    setExpandedLevels(prev => ({ ...prev, [level]: !prev[level] }));
-                };
-
-                const toggleSection = (level, sectionIdx) => {
-                    const key = `${level}-${sectionIdx}`;
-                    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
-                };
-
-                return (
-                    <div className="pb-32 pt-20 px-4 max-w-md mx-auto relative animate-fade-in">
-                        <div className="text-center mb-8">
-                            <h2 className="text-2xl font-black text-white mb-2 tracking-tight">Temario del Curso</h2>
-                            <p className="text-duotext text-sm">
-                                La estimación de los niveles del Marco Común Europeo de Referencia (A1 - C1) es un análisis educativo deducido de la progresión gramatical.
-                            </p>
-                        </div>
-
-                        <div className="space-y-4">
-                            {SYLLABUS_DATA.map((levelData) => {
-                                const isLevelExpanded = expandedLevels[levelData.level];
-                                return (
-                                    <div key={levelData.level} className={`bg-surface rounded-3xl overflow-hidden shadow-lg border border-${levelData.color}/20 transition-all duration-300`}>
-                                        <div onClick={() => toggleLevel(levelData.level)} className={`p-5 flex items-center justify-between cursor-pointer active:bg-white/5 transition-colors`}>
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-full bg-${levelData.color}/20 flex items-center justify-center text-${levelData.color}`}><Icon name={levelData.icon} size={20} /></div>
-                                                <div>
-                                                    <h3 className="font-bold text-lg text-white">{levelData.title}</h3>
-                                                    <p className={`text-xs text-${levelData.color} font-bold`}>{levelData.subtitle}</p>
-                                                </div>
-                                            </div>
-                                            <div className={`text-duotext transition-transform duration-300 ${isLevelExpanded ? 'rotate-180' : ''}`}>
-                                                <Icon name="ChevronDown" />
-                                            </div>
-                                        </div>
-                                        
-                                        {isLevelExpanded && (
-                                            <div className="px-5 pb-5 pt-0 animate-slide-up">
-                                                <p className="text-sm text-duotext mb-5 leading-relaxed">{levelData.desc}</p>
-                                                
-                                                <div className="space-y-3">
-                                                    {levelData.sections.map((sec, idx) => {
-                                                        const secKey = `${levelData.level}-${idx}`;
-                                                        const isSecExpanded = expandedSections[secKey];
-                                                        
-                                                        return (
-                                                            <div key={idx} className={`bg-darker rounded-xl border-l-4 border-${levelData.color} overflow-hidden`}>
-                                                                <div onClick={() => toggleSection(levelData.level, idx)} className="p-3 flex items-center justify-between cursor-pointer active:bg-white/5">
-                                                                    <h4 className="font-bold text-white text-sm">Clases {sec.range}: {sec.title}</h4>
-                                                                    <div className={`text-duotext transition-transform duration-300 ${isSecExpanded ? 'rotate-180' : ''}`}>
-                                                                        <Icon name="ChevronDown" size={16} />
-                                                                    </div>
-                                                                </div>
-                                                                
-                                                                {isSecExpanded && (
-                                                                    <div className="p-3 pt-0 animate-slide-up">
-                                                                        {sec.points && (
-                                                                            <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
-                                                                                {sec.points.map((point, pIdx) => (
-                                                                                    <li key={pIdx} className="leading-snug">{point}</li>
-                                                                                ))}
-                                                                            </ul>
-                                                                        )}
-                                                                        
-                                                                        {sec.classes && (
-                                                                            <div className="space-y-4 mt-2">
-                                                                                {sec.classes.map(cls => (
-                                                                                    <div key={cls.id} className="bg-surface/50 rounded-lg p-3 border border-white/5">
-                                                                                        <div className="flex items-start gap-2 mb-2">
-                                                                                            <span className={`bg-${levelData.color}/20 text-${levelData.color} text-[10px] font-black px-2 py-0.5 rounded shrink-0 mt-0.5`}>CLASE {cls.id}</span>
-                                                                                            <h5 className="font-bold text-white text-sm leading-tight">{cls.title}</h5>
-                                                                                        </div>
-                                                                                        <div className="pl-1">
-                                                                                            <p className="text-xs text-duotext mb-2 leading-relaxed"><strong className="text-white/70">Tema:</strong> {cls.theme}</p>
-                                                                                            <div className="bg-dark p-2 rounded text-xs text-duoblue italic border-l-2 border-duoblue/30 leading-relaxed">
-                                                                                                {cls.examples}
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                );
-            };
 
             const renderSyllabusTab = () => <SyllabusTab />;
 
