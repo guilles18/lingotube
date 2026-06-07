@@ -199,6 +199,30 @@
             "Fluidez es automatizar el acceso a palabras mediante mielinización."
         ];
 
+        const SYLLABUS_DATA = [
+            { level: 'beginner', title: 'Nivel Básico', sections: [
+                { range: '1-30', title: 'Fundamentos y Presente Simple', content: 'Vocabulario esencial, verbo "to be", demostrativos y nacionalidades.' },
+                { range: '31-60', title: 'Posesión, Cantidad y Rutinas', content: 'Posesivos absolutos, genitivo sajón, preposiciones de lugar, existencia (there is/are), números ordinales, la hora y rutinas.' },
+                { range: '61-90', title: 'Acciones en Progreso y Futuro Básico', content: 'Presente continuo, imperativos, habilidades (can/can\'t), futuro (will/going to) y condicionales básicos.' },
+                { range: '91-130', title: 'Expresando Deseos y Preguntas Indirectas', content: 'Preferencias, cuantificadores, pronombres indefinidos, pasado del verbo "to be" y preguntas indirectas.' },
+                { range: '131-194', title: 'El Pasado Simple y Movimiento', content: 'Pasado Simple (regulares e irregulares), descripciones físicas y fórmulas de cortesía.' }
+            ] },
+            { level: 'intermediate', title: 'Nivel Intermedio', sections: [
+                { range: '1-35', title: 'Profundización en el Pasado y Futuro', content: 'Pasado simple irregular, predicciones futuras, comparativos y superlativos avanzados.' },
+                { range: '36-75', title: 'Cuantificadores Avanzados y Preguntas Complejas', content: 'Verbos de sentidos, preguntas incrustadas, cuantificadores de precisión y phrasal verbs frecuentes.' },
+                { range: '76-110', title: 'Tiempos Perfectos y Modales de Obligación', content: 'Presente Perfecto, verbos modales para deducción, recomendación y obligación.' },
+                { range: '111-150', title: 'Modales en Pasado y Condicionales', content: 'Críticas sobre el pasado, condiciones estrictas y presente perfecto continuo.' },
+                { range: '151-194', title: 'Estructuras Causativas y Conectores', content: 'Causativos (make/let/allow), "used to", pronombres reflexivos y conectores discursivos.' }
+            ] },
+            { level: 'advanced', title: 'Nivel Avanzado', sections: [
+                { range: '1-35', title: 'Énfasis, Duración y Estilo Indirecto', content: 'Preguntas negativas, intensidad (so/such... that), Reported Speech y genitivo sajón compuesto.' },
+                { range: '36-75', title: 'Conectores Complejos, Voz Pasiva y Tercer Condicional', content: 'Conectores de contraste, Tercer Condicional y Voz Pasiva en distintos tiempos.' },
+                { range: '76-120', title: 'Modismos, Expresiones de Tiempo y Phrasal Verbs Complejos', content: 'Expresiones de exasperación, futuro perfecto, phrasal verbs avanzados y modificadores de adjetivos.' },
+                { range: '121-160', title: 'Inversiones y Expresiones Nativas', content: 'Subjuntivo inglés, inversiones temporales y collocations nativas.' },
+                { range: '161-194', title: 'Gramática de Alto Nivel y Perfeccionamiento', content: 'Inversión negativa para énfasis, condicionales restrictivos y tag questions avanzadas.' }
+            ] }
+        ];
+
         const STUDY_PLAN = {
             1: { type: 'monday', name: 'Día A: Producción', color: 'bg-planMonday', textColor: 'text-planMonday', icon: 'BookOpen' },
             2: { type: 'tuesday', name: 'Día B: Fricción Social', color: 'bg-planMonday', textColor: 'text-planMonday', icon: 'Users' },
@@ -538,6 +562,10 @@
             const [dailyQuote, setDailyQuote] = React.useState('');
             const [showScrollTop, setShowScrollTop] = React.useState(false);
             
+            // Estados del buscador
+            const [showSearchModal, setShowSearchModal] = React.useState(false);
+            const [searchQuery, setSearchQuery] = React.useState('');
+
             // Estados para visualización a pantalla completa
             const [descExpanded, setDescExpanded] = React.useState(false);
             const [fullScreenNoteText, setFullScreenNoteText] = React.useState(null); 
@@ -612,6 +640,9 @@
                             LingoTube
                         </div>
                         <div className="flex gap-4 font-bold text-lg">
+                            <button onClick={() => setShowSearchModal(true)} className="flex items-center gap-1 text-duotext hover:text-white transition-colors">
+                                <Icon name="Search" color="currentColor" size={24} />
+                            </button>
                             <div className="flex items-center gap-1 text-duoblue">
                                 <Icon name="CheckCircle" color="currentColor" />
                                 <span>{totalClassesDone}</span>
@@ -948,13 +979,181 @@
                 </div>
             );
 
+            const renderSyllabusTab = () => (
+                <div className="pb-32 pt-20 px-4 max-w-md mx-auto relative animate-fade-in">
+                    <div className="text-center mb-8">
+                        <h2 className="text-2xl font-black text-white mb-2 tracking-tight">Temario del Curso</h2>
+                        <p className="text-duotext text-sm">
+                            La estimación de los niveles del Marco Común Europeo de Referencia (A1 - C1) es un análisis educativo deducido de la progresión gramatical.
+                        </p>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div className="bg-surface rounded-3xl p-5 shadow-lg border border-duogreen/20">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-full bg-duogreen/20 flex items-center justify-center text-duogreen"><Icon name="Map" size={20} /></div>
+                                <div>
+                                    <h3 className="font-bold text-lg text-white">Nivel Básico</h3>
+                                    <p className="text-xs text-duogreen font-bold">A1 - A2 (Principiante a Pre-intermedio)</p>
+                                </div>
+                            </div>
+                            <p className="text-sm text-duotext mb-4">Se enfoca en establecer el vocabulario fundamental, la estructura de oraciones simples, el uso del presente y la introducción al pasado y futuro.</p>
+                            
+                            <div className="space-y-4">
+                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogreen">
+                                    <h4 className="font-bold text-white text-sm mb-1">Clases 1 - 30: Fundamentos y Presente</h4>
+                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                        <li>Vocabulario esencial, verbo "to be" (ser/estar).</li>
+                                        <li>Demostrativos (this/that) y nacionalidades.</li>
+                                    </ul>
+                                </div>
+                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogreen">
+                                    <h4 className="font-bold text-white text-sm mb-1">Clases 31 - 60: Posesión y Rutinas</h4>
+                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                        <li>Posesivos absolutos y el genitivo sajón.</li>
+                                        <li>Preposiciones de lugar y existencia (there is/are).</li>
+                                        <li>Números ordinales, la hora y verbo "to have" con rutinas.</li>
+                                    </ul>
+                                </div>
+                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogreen">
+                                    <h4 className="font-bold text-white text-sm mb-1">Clases 61 - 90: Acciones y Futuro Básico</h4>
+                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                        <li>Presente continuo (am/are/is doing) e imperativos.</li>
+                                        <li>Expresión de habilidades con modales (can/can't).</li>
+                                        <li>Introducción al futuro (will/going to) y condicionales ("If it rains...").</li>
+                                    </ul>
+                                </div>
+                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogreen">
+                                    <h4 className="font-bold text-white text-sm mb-1">Clases 91 - 130: Deseos y Preguntas Indirectas</h4>
+                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                        <li>Estructuras de preferencia (want to, would like to).</li>
+                                        <li>Cuantificadores básicos y pronombres indefinidos.</li>
+                                        <li>Pasado del verbo "to be" y preguntas indirectas simples.</li>
+                                    </ul>
+                                </div>
+                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogreen">
+                                    <h4 className="font-bold text-white text-sm mb-1">Clases 131 - 194: Pasado Simple y Movimiento</h4>
+                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                        <li>Estudio intensivo del Pasado Simple (verbos regulares e irregulares).</li>
+                                        <li>Descripciones físicas y fórmulas de cortesía ("Do you mind...?").</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-surface rounded-3xl p-5 shadow-lg border border-duogold/20">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-full bg-duogold/20 flex items-center justify-center text-duogold"><Icon name="Compass" size={20} /></div>
+                                <div>
+                                    <h3 className="font-bold text-lg text-white">Nivel Intermedio</h3>
+                                    <p className="text-xs text-duogold font-bold">A2 - B1 (Pre-intermedio a Intermedio)</p>
+                                </div>
+                            </div>
+                            <p className="text-sm text-duotext mb-4">Consolida tiempos pasados, introduce tiempos perfectos, expande el uso de verbos modales y comienza el trabajo con phrasal verbs.</p>
+                            
+                            <div className="space-y-4">
+                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogold">
+                                    <h4 className="font-bold text-white text-sm mb-1">Clases 1 - 35: Pasado y Futuro Avanzado</h4>
+                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                        <li>Contraste con el pasado simple de verbos irregulares.</li>
+                                        <li>Predicciones futuras, comparativos y superlativos avanzados.</li>
+                                    </ul>
+                                </div>
+                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogold">
+                                    <h4 className="font-bold text-white text-sm mb-1">Clases 36 - 75: Cuantificadores y Preguntas</h4>
+                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                        <li>Verbos de los sentidos y preguntas incrustadas.</li>
+                                        <li>Cuantificadores de precisión (fewer, less).</li>
+                                        <li>Introducción a phrasal verbs (look up, deal with).</li>
+                                    </ul>
+                                </div>
+                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogold">
+                                    <h4 className="font-bold text-white text-sm mb-1">Clases 76 - 110: Tiempos Perfectos y Obligación</h4>
+                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                        <li>Dominio del Presente Perfecto con palabras clave.</li>
+                                        <li>Verbos modales para deducción, recomendación y obligación (must, should).</li>
+                                    </ul>
+                                </div>
+                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogold">
+                                    <h4 className="font-bold text-white text-sm mb-1">Clases 111 - 150: Modales Pasados y Condicionales</h4>
+                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                        <li>Críticas sobre el pasado ("He should have called").</li>
+                                        <li>Condiciones estrictas ("as long as") y el presente perfecto continuo.</li>
+                                    </ul>
+                                </div>
+                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogold">
+                                    <h4 className="font-bold text-white text-sm mb-1">Clases 151 - 194: Causativas y Conectores</h4>
+                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                        <li>Verbos causativos (make, let, allow).</li>
+                                        <li>El uso de "used to", pronombres reflexivos y conectores discursivos.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-surface rounded-3xl p-5 shadow-lg border border-purple-500/20">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400"><Icon name="Target" size={20} /></div>
+                                <div>
+                                    <h3 className="font-bold text-lg text-white">Nivel Avanzado</h3>
+                                    <p className="text-xs text-purple-400 font-bold">B2 - C1 (Intermedio-Alto a Avanzado)</p>
+                                </div>
+                            </div>
+                            <p className="text-sm text-duotext mb-4">Pule la fluidez a través de modismos, formas pasivas, condicionales irreales y estructuras de alta complejidad.</p>
+                            
+                            <div className="space-y-4">
+                                <div className="bg-darker rounded-xl p-3 border-l-4 border-purple-500">
+                                    <h4 className="font-bold text-white text-sm mb-1">Clases 1 - 35: Énfasis y Estilo Indirecto</h4>
+                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                        <li>Preguntas negativas para expresar sorpresa.</li>
+                                        <li>Construcciones de intensidad ("so... that").</li>
+                                        <li>"Reported Speech" y estructuras del genitivo sajón compuesto.</li>
+                                    </ul>
+                                </div>
+                                <div className="bg-darker rounded-xl p-3 border-l-4 border-purple-500">
+                                    <h4 className="font-bold text-white text-sm mb-1">Clases 36 - 75: Pasiva y Tercer Condicional</h4>
+                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                        <li>Manejo de conectores de contraste y causa.</li>
+                                        <li>Tercer Condicional para situaciones pasadas imposibles.</li>
+                                        <li>Diferentes tiempos de la Voz Pasiva.</li>
+                                    </ul>
+                                </div>
+                                <div className="bg-darker rounded-xl p-3 border-l-4 border-purple-500">
+                                    <h4 className="font-bold text-white text-sm mb-1">Clases 76 - 120: Modismos y Phrasal Verbs</h4>
+                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                        <li>Expresiones de exasperación e inutilidad.</li>
+                                        <li>Dominio del futuro perfecto y Phrasal verbs avanzados.</li>
+                                        <li>Modificadores de adjetivos para precisión.</li>
+                                    </ul>
+                                </div>
+                                <div className="bg-darker rounded-xl p-3 border-l-4 border-purple-500">
+                                    <h4 className="font-bold text-white text-sm mb-1">Clases 121 - 160: Inversiones y Expresiones Nativas</h4>
+                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                        <li>Uso del subjuntivo inglés e inversiones temporales.</li>
+                                        <li>Modismos y collocations de nivel nativo ("cost an arm and a leg").</li>
+                                    </ul>
+                                </div>
+                                <div className="bg-darker rounded-xl p-3 border-l-4 border-purple-500">
+                                    <h4 className="font-bold text-white text-sm mb-1">Clases 161 - 194: Perfeccionamiento</h4>
+                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                        <li>Inversión gramatical negativa para énfasis formal.</li>
+                                        <li>Condicionales restrictivos y tag questions avanzadas.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+
             const renderTabBar = () => (
-                <nav className="fixed bottom-0 w-full bg-darker/80 backdrop-blur-xl border-t border-white/5 py-3 px-2 sm:px-6 z-40 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+                <nav className="fixed bottom-0 w-full bg-darker/80 backdrop-blur-xl border-t border-white/5 py-3 px-1 sm:px-4 z-40 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
                     <div className="flex justify-around max-w-md mx-auto relative">
-                        <button onClick={() => setCurrentTab('learn')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentTab === 'learn' ? 'text-duoblue bg-duoblue/10' : 'text-duotext'}`}><Icon name="Home" /><span className="text-[10px] sm:text-xs font-bold mt-1">Aprender</span></button>
-                        <button onClick={() => setCurrentTab('bookmarks')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentTab === 'bookmarks' ? 'text-orange-500 bg-orange-500/10' : 'text-duotext'}`}><Icon name="Bookmark" /><span className="text-[10px] sm:text-xs font-bold mt-1">Repasar</span></button>
-                        <button onClick={() => setCurrentTab('stats')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentTab === 'stats' ? 'text-duoblue bg-duoblue/10' : 'text-duotext'}`}><Icon name="BarChart2" /><span className="text-[10px] sm:text-xs font-bold mt-1">Estadísticas</span></button>
-                        <button onClick={() => setCurrentTab('profile')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${currentTab === 'profile' ? 'text-duoblue bg-duoblue/10' : 'text-duotext'}`}><Icon name="User" /><span className="text-[10px] sm:text-xs font-bold mt-1">Perfil</span></button>
+                        <button onClick={() => setCurrentTab('learn')} className={`flex flex-col items-center p-1 sm:p-2 rounded-xl transition-colors ${currentTab === 'learn' ? 'text-duoblue bg-duoblue/10' : 'text-duotext'}`}><Icon name="Home" /><span className="text-[10px] sm:text-xs font-bold mt-1">Aprender</span></button>
+                        <button onClick={() => setCurrentTab('bookmarks')} className={`flex flex-col items-center p-1 sm:p-2 rounded-xl transition-colors ${currentTab === 'bookmarks' ? 'text-orange-500 bg-orange-500/10' : 'text-duotext'}`}><Icon name="Bookmark" /><span className="text-[10px] sm:text-xs font-bold mt-1">Repasar</span></button>
+                        <button onClick={() => setCurrentTab('stats')} className={`flex flex-col items-center p-1 sm:p-2 rounded-xl transition-colors ${currentTab === 'stats' ? 'text-duoblue bg-duoblue/10' : 'text-duotext'}`}><Icon name="BarChart2" /><span className="text-[10px] sm:text-xs font-bold mt-1">Avance</span></button>
+                        <button onClick={() => setCurrentTab('syllabus')} className={`flex flex-col items-center p-1 sm:p-2 rounded-xl transition-colors ${currentTab === 'syllabus' ? 'text-purple-400 bg-purple-500/10' : 'text-duotext'}`}><Icon name="Map" /><span className="text-[10px] sm:text-xs font-bold mt-1">Temario</span></button>
+                        <button onClick={() => setCurrentTab('profile')} className={`flex flex-col items-center p-1 sm:p-2 rounded-xl transition-colors ${currentTab === 'profile' ? 'text-duoblue bg-duoblue/10' : 'text-duotext'}`}><Icon name="User" /><span className="text-[10px] sm:text-xs font-bold mt-1">Perfil</span></button>
                     </div>
                 </nav>
             );
@@ -1122,6 +1321,131 @@
                 );
             };
 
+            const renderSearchModal = () => {
+                if (!showSearchModal) return null;
+
+                const results = [];
+                const query = searchQuery.toLowerCase().trim();
+
+                if (query) {
+                    SYLLABUS_DATA.forEach(level => {
+                        level.sections.forEach(sec => {
+                            if (sec.title.toLowerCase().includes(query) || sec.content.toLowerCase().includes(query)) {
+                                results.push({ type: 'syllabus', level: level.title, title: sec.title, content: sec.content, range: sec.range });
+                            }
+                        });
+                    });
+
+                    ['beginner', 'intermediate', 'advanced'].forEach(lvl => {
+                        const lvlName = lvl === 'beginner' ? 'Principiante' : lvl === 'intermediate' ? 'Intermedio' : 'Avanzado';
+                        
+                        if (courseData[lvl]) {
+                            courseData[lvl].forEach(cls => {
+                                const classKey = `${lvl}-${cls.id}`;
+                                const note = data.notes[classKey] || '';
+                                const chunk = data.chunks[classKey] || '';
+                                const title = cls.title || '';
+
+                                let matched = false;
+                                let matchType = '';
+                                let preview = '';
+
+                                if (title.toLowerCase().includes(query)) {
+                                    matched = true;
+                                    matchType = 'Título';
+                                    preview = title;
+                                } else if (note.toLowerCase().includes(query)) {
+                                    matched = true;
+                                    matchType = 'Notas';
+                                    preview = note;
+                                } else if (chunk.toLowerCase().includes(query)) {
+                                    matched = true;
+                                    matchType = 'Chunks';
+                                    preview = chunk;
+                                }
+
+                                if (matched) {
+                                    results.push({ type: 'class', level: lvl, levelName: lvlName, classId: cls.id, matchType, preview });
+                                }
+                            });
+                        }
+                    });
+                }
+
+                return (
+                    <div className="fixed inset-0 bg-darker/95 backdrop-blur-xl z-[80] flex flex-col animate-fade-in pt-safe pb-safe">
+                        <div className="p-4 border-b border-white/10 flex items-center gap-3">
+                            <div className="flex-1 bg-surface rounded-2xl flex items-center px-4 py-3 border border-duogray/50 focus-within:border-duoblue transition-colors">
+                                <Icon name="Search" className="text-duotext mr-2" size={20} />
+                                <input 
+                                    autoFocus
+                                    type="text" 
+                                    className="bg-transparent text-white w-full outline-none text-[16px] placeholder:text-duotext"
+                                    placeholder="Buscar en clases, notas o temario..." 
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                />
+                                {searchQuery && (
+                                    <button onClick={() => setSearchQuery('')} className="text-duotext hover:text-white">
+                                        <Icon name="XCircle" size={20} />
+                                    </button>
+                                )}
+                            </div>
+                            <button onClick={() => { setShowSearchModal(false); setSearchQuery(''); }} className="text-duotext font-bold p-2 hover:text-white transition-colors">
+                                Cancelar
+                            </button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {query && results.length === 0 ? (
+                                <div className="text-center text-duotext mt-10">
+                                    <Icon name="Search" size={48} className="mx-auto mb-4 opacity-50" />
+                                    <p>No se encontraron resultados para "{query}"</p>
+                                </div>
+                            ) : null}
+
+                            {query && results.length > 0 ? (
+                                <div className="space-y-3 pb-20">
+                                    <h3 className="text-sm font-bold text-duotext mb-4 ml-1">Resultados ({results.length})</h3>
+                                    {results.map((res, idx) => {
+                                        if (res.type === 'syllabus') {
+                                            return (
+                                                <div key={`syl-${idx}`} onClick={() => { setShowSearchModal(false); setCurrentTab('syllabus'); }} className="bg-surface rounded-2xl p-4 border border-purple-500/30 cursor-pointer active:scale-95 transition-transform">
+                                                    <div className="flex items-center gap-2 text-purple-400 text-xs font-bold mb-1">
+                                                        <Icon name="Map" size={14} /> Temario: {res.level} (Clases {res.range})
+                                                    </div>
+                                                    <h4 className="text-white font-bold mb-1">{res.title}</h4>
+                                                    <p className="text-sm text-duotext line-clamp-2">{res.content}</p>
+                                                </div>
+                                            );
+                                        } else {
+                                            return (
+                                                <div key={`cls-${res.level}-${res.classId}`} onClick={() => { setShowSearchModal(false); setCurrentTab('learn'); setCurrentLevel(res.level); setSelectedClass(res.classId); }} className="bg-surface rounded-2xl p-4 border border-duoblue/30 cursor-pointer active:scale-95 transition-transform">
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <div className="flex items-center gap-2 text-duoblue text-xs font-bold">
+                                                            <Icon name="PlayCircle" size={14} /> {res.levelName} - Clase {res.classId}
+                                                        </div>
+                                                        <span className="text-[10px] bg-dark px-2 py-0.5 rounded-full text-duotext border border-duogray">{res.matchType}</span>
+                                                    </div>
+                                                    <p className="text-sm text-white line-clamp-2 mt-2">{res.preview}</p>
+                                                </div>
+                                            );
+                                        }
+                                    })}
+                                </div>
+                            ) : null}
+                            
+                            {!query && (
+                                <div className="text-center text-duotext mt-20 opacity-50">
+                                    <Icon name="Search" size={64} className="mx-auto mb-4" />
+                                    <p>Escribe algo para buscar en todo tu contenido.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            };
+
             return (
                 <div className="min-h-screen relative font-sans overflow-x-hidden">
                     {renderHeader()}
@@ -1129,6 +1453,7 @@
                         {mountedTabs['learn'] && <div style={{ display: currentTab === 'learn' ? 'block' : 'none' }}>{renderLearnTab()}</div>}
                         {mountedTabs['bookmarks'] && <div style={{ display: currentTab === 'bookmarks' ? 'block' : 'none' }}>{renderBookmarksTab()}</div>}
                         {mountedTabs['stats'] && <div style={{ display: currentTab === 'stats' ? 'block' : 'none' }}>{renderStatsTab()}</div>}
+                        {mountedTabs['syllabus'] && <div style={{ display: currentTab === 'syllabus' ? 'block' : 'none' }}>{renderSyllabusTab()}</div>}
                         {mountedTabs['profile'] && <div style={{ display: currentTab === 'profile' ? 'block' : 'none' }}>{renderProfileTab()}</div>}
                     </main>
                     
@@ -1140,6 +1465,7 @@
                     {renderModal()}
                     {renderFullScreenNote()}
                     {renderFullScreenEditor()}
+                    {renderSearchModal()}
                 </div>
             );
         };
