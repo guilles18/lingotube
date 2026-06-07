@@ -543,6 +543,17 @@
             const [fullScreenNoteText, setFullScreenNoteText] = React.useState(null); 
             const [fullScreenEdit, setFullScreenEdit] = React.useState(null); 
             
+            const [mountedTabs, setMountedTabs] = React.useState({ [currentTab]: true });
+            const [mountedLevels, setMountedLevels] = React.useState({ [currentLevel]: true });
+            
+            React.useEffect(() => {
+                setMountedTabs(prev => ({ ...prev, [currentTab]: true }));
+            }, [currentTab]);
+            
+            React.useEffect(() => {
+                setMountedLevels(prev => ({ ...prev, [currentLevel]: true }));
+            }, [currentLevel]);
+            
             const activeNodeRef = React.useRef(null);
 
             React.useEffect(() => {
@@ -625,6 +636,7 @@
                         </div>
 
                         {['beginner', 'intermediate', 'advanced'].map(levelKey => {
+                            if (!mountedLevels[levelKey]) return null;
                             const completedInLevel = data.completed[levelKey] || [];
                             const reviewsInLevel = data.reviews[levelKey] || [];
                             
@@ -1113,10 +1125,10 @@
                 <div className="min-h-screen relative font-sans overflow-x-hidden">
                     {renderHeader()}
                     <main>
-                        <div style={{ display: currentTab === 'learn' ? 'block' : 'none' }}>{renderLearnTab()}</div>
-                        <div style={{ display: currentTab === 'bookmarks' ? 'block' : 'none' }}>{renderBookmarksTab()}</div>
-                        <div style={{ display: currentTab === 'stats' ? 'block' : 'none' }}>{renderStatsTab()}</div>
-                        <div style={{ display: currentTab === 'profile' ? 'block' : 'none' }}>{renderProfileTab()}</div>
+                        {mountedTabs['learn'] && <div style={{ display: currentTab === 'learn' ? 'block' : 'none' }}>{renderLearnTab()}</div>}
+                        {mountedTabs['bookmarks'] && <div style={{ display: currentTab === 'bookmarks' ? 'block' : 'none' }}>{renderBookmarksTab()}</div>}
+                        {mountedTabs['stats'] && <div style={{ display: currentTab === 'stats' ? 'block' : 'none' }}>{renderStatsTab()}</div>}
+                        {mountedTabs['profile'] && <div style={{ display: currentTab === 'profile' ? 'block' : 'none' }}>{renderProfileTab()}</div>}
                     </main>
                     
                     {showScrollTop && currentTab === 'learn' && (
