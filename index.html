@@ -122,8 +122,8 @@
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
-                .replace(/==([\s\S]*?)==/g, '<mark class="bg-yellow-500/80 text-darker font-bold rounded px-1.5 py-0.5 shadow-sm">$1</mark>')
-                .replace(/\*([\s\S]*?)\*/g, '<strong class="font-bold text-white">$1</strong>')
+                .replace(/==([\s\S]*?)==/g, '<mark class="bg-yellow-300 text-gray-900 font-bold rounded px-1.5 py-0.5 shadow-sm">$1</mark>')
+                .replace(/\*([\s\S]*?)\*/g, '<strong class="font-bold text-gray-900">$1</strong>')
                 .replace(/_([\s\S]*?)_/g, '<em class="italic text-duoblue">$1</em>');
             return { __html: html };
         };
