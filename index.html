@@ -200,26 +200,85 @@
         ];
 
         const SYLLABUS_DATA = [
-            { level: 'beginner', title: 'Nivel Básico', sections: [
-                { range: '1-30', title: 'Fundamentos y Presente Simple', content: 'Vocabulario esencial, verbo "to be", demostrativos y nacionalidades.' },
-                { range: '31-60', title: 'Posesión, Cantidad y Rutinas', content: 'Posesivos absolutos, genitivo sajón, preposiciones de lugar, existencia (there is/are), números ordinales, la hora y rutinas.' },
-                { range: '61-90', title: 'Acciones en Progreso y Futuro Básico', content: 'Presente continuo, imperativos, habilidades (can/can\'t), futuro (will/going to) y condicionales básicos.' },
-                { range: '91-130', title: 'Expresando Deseos y Preguntas Indirectas', content: 'Preferencias, cuantificadores, pronombres indefinidos, pasado del verbo "to be" y preguntas indirectas.' },
-                { range: '131-194', title: 'El Pasado Simple y Movimiento', content: 'Pasado Simple (regulares e irregulares), descripciones físicas y fórmulas de cortesía.' }
+            { level: 'beginner', title: 'Nivel Básico', desc: 'Este curso se enfoca en establecer el vocabulario fundamental, la estructura de oraciones simples, el uso del presente y la introducción al pasado y futuro.', subtitle: 'A1 - A2 (Principiante a Pre-intermedio)', color: 'duogreen', icon: 'Map', sections: [
+                { range: '1 - 30', title: 'Fundamentos y Presente Simple', points: [
+                    'Vocabulario esencial de objetos, colores y entorno.',
+                    'Uso afirmativo, negativo e interrogativo del verbo "to be" (ser/estar).',
+                    'Demostrativos (this, that, these, those) y vocabulario de países y nacionalidades.'
+                ] },
+                { range: '31 - 60', title: 'Posesión, Cantidad y Rutinas', points: [
+                    'Posesivos absolutos (mine, yours, his, hers) y el genitivo sajón.',
+                    'Preposiciones de lugar (in, on, under, next to) y existencia (there is / there are) con sustantivos contables e incontables (some/any).',
+                    'Números ordinales, fechas, la hora y el uso del verbo "to have" con adverbios de frecuencia para rutinas.'
+                ] },
+                { range: '61 - 90', title: 'Acciones en Progreso y Futuro Básico', points: [
+                    'Presente continuo para acciones en curso (am/are/is doing) e imperativos (tell me to...).',
+                    'Expresión de habilidades con los modales can / can\'t.',
+                    'Introducción a la expresión del futuro mediante "will" y "going to", así como los primeros condicionales básicos ("If it rains...").'
+                ] },
+                { range: '91 - 130', title: 'Expresando Deseos y Preguntas Indirectas', points: [
+                    'Contrastes de rutina (todos los días vs. mañana) y estructuras de preferencia o necesidad (want to, need to, would like to).',
+                    'Cuantificadores básicos (many, much, a lot of) y pronombres indefinidos (anything, something, nothing).',
+                    'Pasado simple del verbo "to be" (was / were) y formulación de preguntas indirectas simples ("Do you know where...?").'
+                ] },
+                { range: '131 - 194', title: 'El Pasado Simple y Movimiento', points: [
+                    'Estudio intensivo del Pasado Simple utilizando verbos regulares e irregulares frecuentes (went, ate, drank, bought, drove, slept).',
+                    'Ortografía básica (spelling), descripciones de distancias físicas y fórmulas de cortesía como "Do you mind...?".'
+                ] }
             ] },
-            { level: 'intermediate', title: 'Nivel Intermedio', sections: [
-                { range: '1-35', title: 'Profundización en el Pasado y Futuro', content: 'Pasado simple irregular, predicciones futuras, comparativos y superlativos avanzados.' },
-                { range: '36-75', title: 'Cuantificadores Avanzados y Preguntas Complejas', content: 'Verbos de sentidos, preguntas incrustadas, cuantificadores de precisión y phrasal verbs frecuentes.' },
-                { range: '76-110', title: 'Tiempos Perfectos y Modales de Obligación', content: 'Presente Perfecto, verbos modales para deducción, recomendación y obligación.' },
-                { range: '111-150', title: 'Modales en Pasado y Condicionales', content: 'Críticas sobre el pasado, condiciones estrictas y presente perfecto continuo.' },
-                { range: '151-194', title: 'Estructuras Causativas y Conectores', content: 'Causativos (make/let/allow), "used to", pronombres reflexivos y conectores discursivos.' }
+            { level: 'intermediate', title: 'Nivel Intermedio', desc: 'Este bloque consolida los tiempos pasados, introduce los tiempos perfectos, expande enormemente el uso de verbos modales y comienza el trabajo con phrasal verbs comunes.', subtitle: 'A2 - B1 (Pre-intermedio a Intermedio)', color: 'duogold', icon: 'Compass', sections: [
+                { range: '1 - 35', title: 'Profundización en el Pasado y Futuro', points: [
+                    'Contraste y agilidad con el pasado simple de verbos irregulares (broke, found, cut, fell).',
+                    'Predicciones futuras y ofrecimientos ("I will probably", "Shall I...?").',
+                    'Comparativos y superlativos avanzados (as... as, more intelligent than), e intenciones no cumplidas en el pasado ("I was going to...").'
+                ] },
+                { range: '36 - 75', title: 'Cuantificadores Avanzados y Preguntas Complejas', points: [
+                    'Verbos de los sentidos (hear, feel) y preguntas incrustadas ("Do you know what it is?").',
+                    'Cuantificadores de precisión (fewer, less, too much, too many, enough) e identificar posesiones complejas ("Whose is it?").',
+                    'Introducción a los phrasal verbs de uso frecuente (look up, deal with, pick up, take off).'
+                ] },
+                { range: '76 - 110', title: 'Tiempos Perfectos y Modales de Obligación', points: [
+                    'Dominio del Presente Perfecto utilizando palabras clave (already, yet, just, since, for).',
+                    'Verbos modales para deducción, recomendación y obligación (must be, can\'t be, should, ought to, have to).',
+                    'Expresar plazos temporales ("I had to be in Malaga by quarter to 6").'
+                ] },
+                { range: '111 - 150', title: 'Modales en Pasado y Condicionales', points: [
+                    'Críticas e hipótesis sobre el pasado usando modales perfectos ("He should have called her", "She must have been thirsty").',
+                    'Condiciones estrictas ("as long as") y escenarios hipotéticos ("what if?").',
+                    'El presente perfecto continuo ("I have been living in Spain for a long time").'
+                ] },
+                { range: '151 - 194', title: 'Estructuras Causativas y Conectores', points: [
+                    'Verbos causativos y permisos (make, let, allow).',
+                    'El uso de "used to" para hábitos pasados, pronombres reflexivos ("by yourself/on your own"), y cuantificadores distributivos ("each vs. every").',
+                    'Conectores discursivos para resumir ("To sum up", "On the whole") y comparativos proporcionales ("The more you study, the more you learn").'
+                ] }
             ] },
-            { level: 'advanced', title: 'Nivel Avanzado', sections: [
-                { range: '1-35', title: 'Énfasis, Duración y Estilo Indirecto', content: 'Preguntas negativas, intensidad (so/such... that), Reported Speech y genitivo sajón compuesto.' },
-                { range: '36-75', title: 'Conectores Complejos, Voz Pasiva y Tercer Condicional', content: 'Conectores de contraste, Tercer Condicional y Voz Pasiva en distintos tiempos.' },
-                { range: '76-120', title: 'Modismos, Expresiones de Tiempo y Phrasal Verbs Complejos', content: 'Expresiones de exasperación, futuro perfecto, phrasal verbs avanzados y modificadores de adjetivos.' },
-                { range: '121-160', title: 'Inversiones y Expresiones Nativas', content: 'Subjuntivo inglés, inversiones temporales y collocations nativas.' },
-                { range: '161-194', title: 'Gramática de Alto Nivel y Perfeccionamiento', content: 'Inversión negativa para énfasis, condicionales restrictivos y tag questions avanzadas.' }
+            { level: 'advanced', title: 'Nivel Avanzado', desc: 'El tramo final del programa pule la fluidez a través de modismos, formas pasivas, condicionales irreales y estructuras gramaticales de alta complejidad para lograr naturalidad.', subtitle: 'B2 - C1 (Intermedio-Alto a Avanzado)', color: 'purple-500', icon: 'Target', sections: [
+                { range: '1 - 35', title: 'Énfasis, Duración y Estilo Indirecto', points: [
+                    'Preguntas negativas para expresar sorpresa o confirmación ("Why aren\'t you...?").',
+                    'Construcciones de intensidad ("so... that" / "such... that") y preguntas de duración temporal ("How long does it take...?").',
+                    'Introducción al "Reported Speech" o estilo indirecto ("She said she would do it") y estructuras del genitivo sajón compuesto ("Natasha\'s dog\'s bone").'
+                ] },
+                { range: '36 - 75', title: 'Conectores Complejos, Voz Pasiva y Tercer Condicional', points: [
+                    'Manejo fluido de conectores de contraste y causa (even though, despite, in spite of, rather than, due to the fact that).',
+                    'El Tercer Condicional para situaciones pasadas imposibles ("If I had known, I would have told you") y la estructura "used to / get used to / be used to".',
+                    'Diferentes tiempos de la Voz Pasiva ("The bridge is being built", "The house has already been sold").',
+                    'Expresión de arrepentimiento o deseo con "I wish / If only".'
+                ] },
+                { range: '76 - 120', title: 'Modismos, Expresiones de Tiempo y Phrasal Verbs Complejos', points: [
+                    'Expresiones de exasperación ("Why on earth...", "Why in the world..."), y de inutilidad ("What\'s the point of...?").',
+                    'Dominio del futuro perfecto ("Will you have finished the report by next week?").',
+                    'Phrasal verbs avanzados y sus aplicaciones (run out of, brush up on, get rid of, show off, catch up with).',
+                    'Modificadores de adjetivos para precisión (slightly, considerably, quite a bit) y estructuras concesivas ("no matter how / what / where").'
+                ] },
+                { range: '121 - 160', title: 'Inversiones y Expresiones Nativas', points: [
+                    'Uso del subjuntivo inglés ("It\'s crucial that he be here") e inversiones temporales literarias ("No sooner had the game started than...").',
+                    'Modismos y collocations habituales que aportan un nivel nativo ("cost an arm and a leg", "get on my nerves", "straight to the point", "hit the roof").'
+                ] },
+                { range: '161 - 194', title: 'Gramática de Alto Nivel y Perfeccionamiento', points: [
+                    'Inversión gramatical negativa para dar un alto grado de énfasis formal ("Never have I been to such a filthy house", "Under no circumstances must you get on the lift").',
+                    'Condicionales restrictivos ("provided that"), expresiones idiomáticas para el estado actual de las cosas ("the way things stand", "for the time being", "better off"), y tag questions avanzadas ("They could have called, couldn\'t they?").'
+                ] }
             ] }
         ];
 
@@ -989,159 +1048,31 @@
                     </div>
 
                     <div className="space-y-6">
-                        <div className="bg-surface rounded-3xl p-5 shadow-lg border border-duogreen/20">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-full bg-duogreen/20 flex items-center justify-center text-duogreen"><Icon name="Map" size={20} /></div>
-                                <div>
-                                    <h3 className="font-bold text-lg text-white">Nivel Básico</h3>
-                                    <p className="text-xs text-duogreen font-bold">A1 - A2 (Principiante a Pre-intermedio)</p>
+                        {SYLLABUS_DATA.map((levelData) => (
+                            <div key={levelData.level} className={`bg-surface rounded-3xl p-5 shadow-lg border border-${levelData.color}/20`}>
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className={`w-10 h-10 rounded-full bg-${levelData.color}/20 flex items-center justify-center text-${levelData.color}`}><Icon name={levelData.icon} size={20} /></div>
+                                    <div>
+                                        <h3 className="font-bold text-lg text-white">{levelData.title}</h3>
+                                        <p className={`text-xs text-${levelData.color} font-bold`}>{levelData.subtitle}</p>
+                                    </div>
+                                </div>
+                                <p className="text-sm text-duotext mb-4 leading-relaxed">{levelData.desc}</p>
+                                
+                                <div className="space-y-4">
+                                    {levelData.sections.map((sec, idx) => (
+                                        <div key={idx} className={`bg-darker rounded-xl p-3 border-l-4 border-${levelData.color}`}>
+                                            <h4 className="font-bold text-white text-sm mb-1">Clases {sec.range}: {sec.title}</h4>
+                                            <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
+                                                {sec.points.map((point, pIdx) => (
+                                                    <li key={pIdx} className="leading-snug">{point}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                            <p className="text-sm text-duotext mb-4">Se enfoca en establecer el vocabulario fundamental, la estructura de oraciones simples, el uso del presente y la introducción al pasado y futuro.</p>
-                            
-                            <div className="space-y-4">
-                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogreen">
-                                    <h4 className="font-bold text-white text-sm mb-1">Clases 1 - 30: Fundamentos y Presente</h4>
-                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
-                                        <li>Vocabulario esencial, verbo "to be" (ser/estar).</li>
-                                        <li>Demostrativos (this/that) y nacionalidades.</li>
-                                    </ul>
-                                </div>
-                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogreen">
-                                    <h4 className="font-bold text-white text-sm mb-1">Clases 31 - 60: Posesión y Rutinas</h4>
-                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
-                                        <li>Posesivos absolutos y el genitivo sajón.</li>
-                                        <li>Preposiciones de lugar y existencia (there is/are).</li>
-                                        <li>Números ordinales, la hora y verbo "to have" con rutinas.</li>
-                                    </ul>
-                                </div>
-                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogreen">
-                                    <h4 className="font-bold text-white text-sm mb-1">Clases 61 - 90: Acciones y Futuro Básico</h4>
-                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
-                                        <li>Presente continuo (am/are/is doing) e imperativos.</li>
-                                        <li>Expresión de habilidades con modales (can/can't).</li>
-                                        <li>Introducción al futuro (will/going to) y condicionales ("If it rains...").</li>
-                                    </ul>
-                                </div>
-                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogreen">
-                                    <h4 className="font-bold text-white text-sm mb-1">Clases 91 - 130: Deseos y Preguntas Indirectas</h4>
-                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
-                                        <li>Estructuras de preferencia (want to, would like to).</li>
-                                        <li>Cuantificadores básicos y pronombres indefinidos.</li>
-                                        <li>Pasado del verbo "to be" y preguntas indirectas simples.</li>
-                                    </ul>
-                                </div>
-                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogreen">
-                                    <h4 className="font-bold text-white text-sm mb-1">Clases 131 - 194: Pasado Simple y Movimiento</h4>
-                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
-                                        <li>Estudio intensivo del Pasado Simple (verbos regulares e irregulares).</li>
-                                        <li>Descripciones físicas y fórmulas de cortesía ("Do you mind...?").</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-surface rounded-3xl p-5 shadow-lg border border-duogold/20">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-full bg-duogold/20 flex items-center justify-center text-duogold"><Icon name="Compass" size={20} /></div>
-                                <div>
-                                    <h3 className="font-bold text-lg text-white">Nivel Intermedio</h3>
-                                    <p className="text-xs text-duogold font-bold">A2 - B1 (Pre-intermedio a Intermedio)</p>
-                                </div>
-                            </div>
-                            <p className="text-sm text-duotext mb-4">Consolida tiempos pasados, introduce tiempos perfectos, expande el uso de verbos modales y comienza el trabajo con phrasal verbs.</p>
-                            
-                            <div className="space-y-4">
-                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogold">
-                                    <h4 className="font-bold text-white text-sm mb-1">Clases 1 - 35: Pasado y Futuro Avanzado</h4>
-                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
-                                        <li>Contraste con el pasado simple de verbos irregulares.</li>
-                                        <li>Predicciones futuras, comparativos y superlativos avanzados.</li>
-                                    </ul>
-                                </div>
-                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogold">
-                                    <h4 className="font-bold text-white text-sm mb-1">Clases 36 - 75: Cuantificadores y Preguntas</h4>
-                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
-                                        <li>Verbos de los sentidos y preguntas incrustadas.</li>
-                                        <li>Cuantificadores de precisión (fewer, less).</li>
-                                        <li>Introducción a phrasal verbs (look up, deal with).</li>
-                                    </ul>
-                                </div>
-                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogold">
-                                    <h4 className="font-bold text-white text-sm mb-1">Clases 76 - 110: Tiempos Perfectos y Obligación</h4>
-                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
-                                        <li>Dominio del Presente Perfecto con palabras clave.</li>
-                                        <li>Verbos modales para deducción, recomendación y obligación (must, should).</li>
-                                    </ul>
-                                </div>
-                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogold">
-                                    <h4 className="font-bold text-white text-sm mb-1">Clases 111 - 150: Modales Pasados y Condicionales</h4>
-                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
-                                        <li>Críticas sobre el pasado ("He should have called").</li>
-                                        <li>Condiciones estrictas ("as long as") y el presente perfecto continuo.</li>
-                                    </ul>
-                                </div>
-                                <div className="bg-darker rounded-xl p-3 border-l-4 border-duogold">
-                                    <h4 className="font-bold text-white text-sm mb-1">Clases 151 - 194: Causativas y Conectores</h4>
-                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
-                                        <li>Verbos causativos (make, let, allow).</li>
-                                        <li>El uso de "used to", pronombres reflexivos y conectores discursivos.</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-surface rounded-3xl p-5 shadow-lg border border-purple-500/20">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400"><Icon name="Target" size={20} /></div>
-                                <div>
-                                    <h3 className="font-bold text-lg text-white">Nivel Avanzado</h3>
-                                    <p className="text-xs text-purple-400 font-bold">B2 - C1 (Intermedio-Alto a Avanzado)</p>
-                                </div>
-                            </div>
-                            <p className="text-sm text-duotext mb-4">Pule la fluidez a través de modismos, formas pasivas, condicionales irreales y estructuras de alta complejidad.</p>
-                            
-                            <div className="space-y-4">
-                                <div className="bg-darker rounded-xl p-3 border-l-4 border-purple-500">
-                                    <h4 className="font-bold text-white text-sm mb-1">Clases 1 - 35: Énfasis y Estilo Indirecto</h4>
-                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
-                                        <li>Preguntas negativas para expresar sorpresa.</li>
-                                        <li>Construcciones de intensidad ("so... that").</li>
-                                        <li>"Reported Speech" y estructuras del genitivo sajón compuesto.</li>
-                                    </ul>
-                                </div>
-                                <div className="bg-darker rounded-xl p-3 border-l-4 border-purple-500">
-                                    <h4 className="font-bold text-white text-sm mb-1">Clases 36 - 75: Pasiva y Tercer Condicional</h4>
-                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
-                                        <li>Manejo de conectores de contraste y causa.</li>
-                                        <li>Tercer Condicional para situaciones pasadas imposibles.</li>
-                                        <li>Diferentes tiempos de la Voz Pasiva.</li>
-                                    </ul>
-                                </div>
-                                <div className="bg-darker rounded-xl p-3 border-l-4 border-purple-500">
-                                    <h4 className="font-bold text-white text-sm mb-1">Clases 76 - 120: Modismos y Phrasal Verbs</h4>
-                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
-                                        <li>Expresiones de exasperación e inutilidad.</li>
-                                        <li>Dominio del futuro perfecto y Phrasal verbs avanzados.</li>
-                                        <li>Modificadores de adjetivos para precisión.</li>
-                                    </ul>
-                                </div>
-                                <div className="bg-darker rounded-xl p-3 border-l-4 border-purple-500">
-                                    <h4 className="font-bold text-white text-sm mb-1">Clases 121 - 160: Inversiones y Expresiones Nativas</h4>
-                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
-                                        <li>Uso del subjuntivo inglés e inversiones temporales.</li>
-                                        <li>Modismos y collocations de nivel nativo ("cost an arm and a leg").</li>
-                                    </ul>
-                                </div>
-                                <div className="bg-darker rounded-xl p-3 border-l-4 border-purple-500">
-                                    <h4 className="font-bold text-white text-sm mb-1">Clases 161 - 194: Perfeccionamiento</h4>
-                                    <ul className="text-sm text-duotext list-disc pl-4 space-y-1">
-                                        <li>Inversión gramatical negativa para énfasis formal.</li>
-                                        <li>Condicionales restrictivos y tag questions avanzadas.</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
+                        ))}
                     </div>
                 </div>
             );
@@ -1330,8 +1261,13 @@
                 if (query) {
                     SYLLABUS_DATA.forEach(level => {
                         level.sections.forEach(sec => {
-                            if (sec.title.toLowerCase().includes(query) || sec.content.toLowerCase().includes(query)) {
-                                results.push({ type: 'syllabus', level: level.title, title: sec.title, content: sec.content, range: sec.range });
+                            let matchContent = false;
+                            sec.points.forEach(p => {
+                                if (p.toLowerCase().includes(query)) matchContent = true;
+                            });
+                            
+                            if (sec.title.toLowerCase().includes(query) || matchContent) {
+                                results.push({ type: 'syllabus', level: level.title, title: sec.title, content: sec.points.join(' '), range: sec.range });
                             }
                         });
                     });
