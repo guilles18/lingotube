@@ -2880,11 +2880,11 @@
             const [expanded, setExpanded] = React.useState(false);
             const classKey = `${lvl.key}-${classId}`;
             return (
-                <div className={`bg-surface border-2 rounded-2xl p-4 transition-all shadow-md animate-slide-up ${isReviewed ? 'border-duogreen/30 opacity-70' : 'border-orange-500/30'}`}>
+                <div className={`bg-white rounded-2xl p-4 transition-all shadow-sm animate-slide-up ${isReviewed ? 'border-2 border-green-200 opacity-70' : 'border-2 border-orange-200'}`}>
                     <div className="flex justify-between items-start mb-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
                         <div className="flex-1">
                             <span className={`text-xs font-bold uppercase tracking-wider ${lvl.color} ${lvl.bg} px-2 py-1 rounded-md inline-block mb-1`}>{lvl.label} • #{classId}</span>
-                            <h3 className={`font-bold leading-tight pr-2 ${isReviewed ? 'text-duotext line-through' : 'text-white'}`}>{displayTitle}</h3>
+                            <h3 className={`font-bold leading-tight pr-2 ${isReviewed ? 'text-gray-400 line-through' : 'text-gray-900'}`}>{displayTitle}</h3>
                         </div>
                         <div className="flex gap-2">
                             <Icon name={expanded ? "ChevronUp" : "ChevronDown"} size={20} className="text-duotext" />
@@ -2896,7 +2896,7 @@
 
                     {expanded ? (
                         <div className="mt-4 animate-slide-up">
-                            <div className="bg-darker p-3 rounded-2xl border border-purple-500/30 mb-3">
+                            <div className="bg-purple-50 p-3 rounded-2xl border border-purple-200 mb-3">
                                 <div className="flex items-center justify-between mb-2">
                                     <label className="flex items-center gap-2 text-sm font-bold text-purple-400">
                                         <Icon name="Zap" size={16} /> Estructuras / Chunks
@@ -2905,22 +2905,22 @@
                                         <Icon name="Maximize2" size={12} /> Expandir
                                     </button>
                                 </div>
-                                <textarea className="w-full bg-dark border-2 border-duogray rounded-xl p-3 text-white focus:outline-none focus:border-purple-500 resize-none h-20 font-mono text-[13px]" placeholder="Ej. ==cost an arm and a leg==" value={chunks} onChange={(e) => saveChunk(classKey, e.target.value)}></textarea>
+                                <textarea className="w-full bg-white border border-purple-200 shadow-inner rounded-xl p-3 text-gray-900 focus:outline-none focus:border-purple-500 resize-none h-20 font-mono text-[13px]" placeholder="Ej. ==cost an arm and a leg==" value={chunks} onChange={(e) => saveChunk(classKey, e.target.value)}></textarea>
                             </div>
-                            <div className="bg-darker p-3 rounded-2xl border border-duogray/50">
+                            <div className="bg-gray-50 p-3 rounded-2xl border border-gray-200">
                                 <div className="flex items-center justify-between mb-2">
                                     <label className="flex items-center gap-2 text-sm font-bold text-duotext">
                                         <Icon name="BookOpen" size={16} /> Mis Notas
                                     </label>
-                                    <button onClick={() => setFullScreenEdit({ classKey, type: 'notes' })} className="flex items-center gap-1 text-[10px] bg-white/10 px-2 py-1 rounded text-white/70 hover:bg-white/20 transition-colors uppercase tracking-wider font-bold">
+                                    <button onClick={() => setFullScreenEdit({ classKey, type: 'notes' })} className="flex items-center gap-1 text-[10px] bg-gray-200 px-2 py-1 rounded text-gray-600 hover:bg-gray-300 transition-colors uppercase tracking-wider font-bold">
                                         <Icon name="Maximize2" size={12} /> Expandir
                                     </button>
                                 </div>
-                                <textarea className="w-full bg-dark border-2 border-duogray rounded-xl p-3 text-white focus:outline-none focus:border-duoblue resize-none h-20 text-[14px]" placeholder="Escribe tus apuntes libres aquí..." value={note} onChange={(e) => saveNote(classKey, e.target.value)}></textarea>
+                                <textarea className="w-full bg-white border border-gray-200 shadow-inner rounded-xl p-3 text-gray-900 focus:outline-none focus:border-gray-400 resize-none h-20 text-[14px]" placeholder="Escribe tus apuntes libres aquí..." value={note} onChange={(e) => saveNote(classKey, e.target.value)}></textarea>
                             </div>
                             <div className="flex gap-2 mt-4">
                                 <button className="duo-btn flex-1 bg-duoblue text-white font-bold py-3 rounded-xl text-sm" onClick={() => { setCurrentLevel(lvl.key); setSelectedClass(classId); }}>Ir a clase</button>
-                                <button className={`duo-btn flex-1 font-bold py-3 rounded-xl text-sm border-b-4 flex items-center justify-center gap-2 ${isReviewed ? 'bg-surface text-duotext border-duogray hover:bg-darker' : 'bg-duogreen text-white border-duogreenDark hover:bg-duogreen/90'}`} onClick={() => toggleReviewedBookmark(lvl.key, classId)}>
+                                <button className={`duo-btn flex-1 font-bold py-3 rounded-xl text-sm border-b-4 flex items-center justify-center gap-2 ${isReviewed ? 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100' : 'bg-duogreen text-white border-duogreenDark hover:bg-duogreen/90'}`} onClick={() => toggleReviewedBookmark(lvl.key, classId)}>
                                     <Icon name="CheckCircle" size={18} /> {isReviewed ? 'Desmarcar' : 'Ya lo repasé'}
                                 </button>
                             </div>
@@ -2928,15 +2928,15 @@
                     ) : (
                         <div className="mt-3 cursor-pointer" onClick={() => setExpanded(true)}>
                             {chunks && (
-                                <div className="bg-dark p-2.5 rounded-xl border border-purple-500/20 mb-2">
+                                <div className="bg-purple-50 p-2.5 rounded-xl border border-purple-200 mb-2">
                                     <div className="flex items-center gap-1 text-xs font-bold text-purple-400 mb-1"><Icon name="Zap" size={12} /> Chunks:</div>
-                                    <div className="text-sm text-purple-100/90 line-clamp-2 font-mono text-[13px] whitespace-pre-wrap" dangerouslySetInnerHTML={renderRichTextHTML(chunks)} />
+                                    <div className="text-sm text-purple-900 line-clamp-2 font-mono text-[13px] whitespace-pre-wrap" dangerouslySetInnerHTML={renderRichTextHTML(chunks)} />
                                 </div>
                             )}
                             {note && (
-                                <div className="bg-darker p-2.5 rounded-xl border border-duogray/50">
+                                <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-200">
                                     <div className="flex items-center gap-1 text-xs font-bold text-duotext mb-1"><Icon name="BookOpen" size={12} /> Apuntes:</div>
-                                    <div className="text-sm text-white/90 line-clamp-2 leading-snug whitespace-pre-wrap" dangerouslySetInnerHTML={renderRichTextHTML(note)} />
+                                    <div className="text-sm text-gray-700 line-clamp-2 leading-snug whitespace-pre-wrap" dangerouslySetInnerHTML={renderRichTextHTML(note)} />
                                 </div>
                             )}
                         </div>
@@ -2997,7 +2997,7 @@
                                                         return (
                                                             <div key={idx} className={`bg-gray-50 rounded-xl border-l-4 border-${levelData.color} overflow-hidden`}>
                                                                 <div onClick={() => toggleSection(levelData.level, idx)} className="p-3 flex items-center justify-between cursor-pointer active:bg-gray-100">
-                                                                    <h4 className="font-bold text-gray-900 text-sm">Clases {sec.range}: {sec.title}</h4>
+                                                                    <h4 className="font-bold text-gray-900 text-sm">{sec.title}</h4>
                                                                     <div className={`text-duotext transition-transform duration-300 ${isSecExpanded ? 'rotate-180' : ''}`}>
                                                                         <Icon name="ChevronDown" size={16} />
                                                                     </div>
