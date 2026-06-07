@@ -33,9 +33,9 @@
                 },
                 extend: {
                     colors: {
-                        dark: '#111b21',
-                        darker: '#0b141a',
-                        surface: '#202f36',
+                        dark: '#f9fafb',
+                        darker: '#f3f4f6',
+                        surface: '#ffffff',
                         duogreen: '#58cc02',
                         duogreenDark: '#46a302',
                         duoblue: '#1cb0f6',
@@ -49,7 +49,7 @@
                         duosilver: '#e5e7eb',
                         duosilverDark: '#9ca3af',
                         duogray: '#37464f',
-                        duotext: '#afbac0',
+                        duotext: '#6b7280',
                         planMonday: '#8b5cf6',
                         planFriday: '#ec4899',
                         planSaturday: '#06b6d4',
@@ -67,7 +67,7 @@
         }
     </script>
     <style>
-        body { background-color: #111b21; background-attachment: fixed; color: white; -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; }
+        body { background-color: #f9fafb; background-attachment: fixed; color: white; -webkit-tap-highlight-color: transparent; scroll-behavior: smooth; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #111b21; }
         ::-webkit-scrollbar-thumb { background: #37464f; border-radius: 10px; }
@@ -150,7 +150,170 @@
                     row.push(currentField);
                     currentField = '';
                 } else if ((char === '\n' || char === '\r') && !inQuotes) {
-                    if (char === '\r' && nextChar === '\n') continue;
+                    if (char === '\r' && nextChar === '\n            const renderLearnTab = () => {
+                const classes = Array.from({ length: TOTAL_CLASSES }, (_, i) => i + 1);
+                
+                const themeConfig = {
+                    'beginner': { bg: 'bg-duoorange', border: 'border-duoorangeDark', text: 'text-duoorange' },
+                    'intermediate': { bg: 'bg-duogreen', border: 'border-duogreenDark', text: 'text-duogreen' },
+                    'advanced': { bg: 'bg-duopurple', border: 'border-duopurpleDark', text: 'text-duopurple' }
+                };
+
+                return (
+                    <div className="pb-24 pt-20 px-4 max-w-md mx-auto relative">
+
+                        <div className="flex bg-surface rounded-2xl p-1 mb-8 shadow-sm border border-gray-100">
+                            {['beginner', 'intermediate', 'advanced'].map(lvl => (
+                                <button key={lvl} onClick={() => setCurrentLevel(lvl)} className={`flex-1 py-2 text-sm font-bold rounded-xl transition-colors ${currentLevel === lvl ? 'bg-gray-200 text-gray-900' : 'text-duotext hover:bg-gray-100'}`}>
+                                    {lvl === 'beginner' ? 'Principiante' : lvl === 'intermediate' ? 'Intermedio' : 'Avanzado'}
+                                </button>
+                            ))}
+                        </div>
+
+                        {['beginner', 'intermediate', 'advanced'].map(levelKey => {
+                            if (!mountedLevels[levelKey]) return null;
+                            const completedInLevel = data.completed[levelKey] || [];
+                            const reviewsInLevel = data.reviews[levelKey] || [];
+                            const theme = themeConfig[levelKey];
+                            
+                            let nextUp = classes.find(c => !completedInLevel.includes(c));
+                            if (!nextUp) nextUp = classes.find(c => !reviewsInLevel.includes(c)) || TOTAL_CLASSES + 1;
+                            
+                            const levelData = SYLLABUS_DATA.find(l => l.level === levelKey);
+
+                            const isSilver = completedInLevel.length === TOTAL_CLASSES;
+                            const isGold = reviewsInLevel.length === TOTAL_CLASSES;
+
+                            return (
+                                <div key={levelKey} style={{ display: currentLevel === levelKey ? 'block' : 'none' }}>
+                                    <div className="mb-8 flex items-center justify-between bg-surface p-4 rounded-2xl shadow-sm border border-gray-100">
+                                        <div><h2 className="font-bold text-lg text-gray-900">Progreso de Nivel</h2><p className="text-sm text-duotext"><span className={theme.text}>{completedInLevel.length} Clases</span> / <span className="text-duogold">{reviewsInLevel.length} Repasos</span></p></div>
+                                        <div className="text-right"><div className={`text-xl font-bold ${theme.text}`}>{Math.round((completedInLevel.length / TOTAL_CLASSES) * 100)}%</div></div>
+                                    </div>
+
+                                    <div className="flex flex-col items-center relative">
+                                        
+                                        {/* Top Trophy if completed */}
+                                        {(isSilver || isGold) && (() => {
+                                            let title = isGold ? '¡Dominio Dorado!' : '¡Curso de Plata!';
+                                            let trophyClass = isGold ? 'drop-shadow-[0_0_40px_rgba(255,200,0,0.6)] animate-bounce-slow z-10 scale-110' : 'drop-shadow-[0_0_30px_rgba(156,163,175,0.5)] animate-bounce-slow z-10 scale-110';
+                                            let trophyImage = isGold ? './gold_trophy.png' : './silver_trophy.png';
+                                            return (
+                                                <div className="relative flex flex-col items-center mb-10 mt-4">
+                                                    <div className={`w-36 h-36 flex items-center justify-center transition-all duration-700 ${trophyClass}`} onClick={() => { if(isGold) confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ['#ffc800', '#ffffff'] }); else if(isSilver) confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ['#e5e7eb', '#9ca3af', '#ffffff'] }); }}>
+                                                        <img src={trophyImage} alt={title} className="w-full h-full object-contain" />
+                                                    </div>
+                                                    <div className="absolute top-32 font-bold text-sm bg-surface/90 backdrop-blur-md px-4 py-2 rounded-full border border-gray-200 shadow-xl text-center z-20 text-gray-900 whitespace-nowrap">{title}</div>
+                                                </div>
+                                            );
+                                        })()}
+
+                                        {levelData.sections.map((section, sectionIdx) => {
+                                            const rangeParts = section.range.split(' - ');
+                                            const startCls = parseInt(rangeParts[0]);
+                                            const endCls = parseInt(rangeParts[1]);
+                                            const sectionClasses = classes.filter(c => c >= startCls && c <= endCls);
+                                            
+                                            return (
+                                                <div key={sectionIdx} className="w-full flex flex-col items-center relative mb-6">
+                                                    {/* Sticky Header */}
+                                                    <div id={`section-hdr-${levelKey}-${sectionIdx}`} className={`sticky top-[64px] z-40 w-full ${theme.bg} text-white px-4 py-3 rounded-2xl shadow-md border-b-4 ${theme.border} mb-8 cursor-pointer hover:opacity-90 transition-opacity`} onClick={() => setSectionModal({ ...section, sectionIdx })}>
+                                                        <div className="flex justify-between items-center">
+                                                            <div>
+                                                                <div className="text-[10px] font-bold opacity-90 uppercase tracking-wider mb-0.5">ETAPA {levelKey === 'beginner' ? 1 : levelKey === 'intermediate' ? 2 : 3}, SECCIÓN {sectionIdx + 1}</div>
+                                                                <div className="text-sm font-bold">{section.title.split(' (')[0]}</div>
+                                                            </div>
+                                                            <div className="bg-black/10 p-1.5 rounded-lg">
+                                                                <Icon name="BookOpen" size={20} className="opacity-90" />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="relative w-full flex flex-col items-center">
+                                                        
+                                                        {sectionClasses.map((cls, idx) => {
+                                                            const isClassCompleted = completedInLevel.includes(cls);
+                                                            const isReviewCompleted = reviewsInLevel.includes(cls);
+                                                            const isCurrent = cls === nextUp;
+                                                            const isBookmarked = data.bookmarks[levelKey].includes(cls);
+                                                            const hasNote = !!data.notes[`${levelKey}-${cls}`] || !!data.chunks[`${levelKey}-${cls}`];
+                                                            
+                                                            const globalIdx = cls - 1;
+                                                            const offset = getOffset(globalIdx);
+                                                            
+                                                            let bgColor = 'bg-darker', borderColor = 'border-gray-300', iconColor = '#9ca3af', extraClasses = '', iconName = hasNote ? "BookOpen" : "Play";
+
+                                                            if (isBookmarked && !isCurrent) { borderColor = 'border-orange-500'; extraClasses += ' shadow-[0_0_10px_rgba(249,115,22,0.3)]'; }
+
+                                                            if (isReviewCompleted) { bgColor = 'bg-duogold'; borderColor = 'border-duogoldDark'; iconColor = '#ffffff'; iconName = "Check"; } 
+                                                            else if (isClassCompleted) {
+                                                                if (isCurrent) { bgColor = 'bg-duogold'; borderColor = 'border-duogoldDark'; iconColor = '#ffffff'; extraClasses += ' animate-bounce-slow shadow-[0_0_20px_rgba(255,200,0,0.5)]'; iconName = "RotateCw"; } 
+                                                                else { bgColor = theme.bg; borderColor = theme.border; iconColor = '#ffffff'; iconName = "Check"; }
+                                                            } else {
+                                                                if (isCurrent) { bgColor = theme.bg; borderColor = theme.border; iconColor = '#ffffff'; extraClasses += ` animate-bounce-slow shadow-[0_0_20px_var(--tw-shadow-color)] shadow-${theme.bg.split('-')[1]}-500/50`; } 
+                                                                else { extraClasses += ' opacity-70'; }
+                                                            }
+
+                                                            const connectorBg = reviewsInLevel.includes(cls + 1) ? 'bg-duogold' : completedInLevel.includes(cls + 1) ? theme.bg : 'bg-darker';
+
+                                                            return (
+                                                                <div key={cls} className="relative flex flex-col items-center mb-6 w-full" id={`node-${levelKey}-${cls}`}>
+                                                                    {idx < sectionClasses.length - 1 && (
+                                                                        <div className={`absolute w-3 h-16 -bottom-10 -z-10 transition-colors duration-500 ${connectorBg}`} style={{ transform: `translateX(${(getOffset(globalIdx + 1) - offset) / 2}px) rotate(${Math.atan2(100, getOffset(globalIdx + 1) - offset) * (180/Math.PI) - 90}deg)`, transformOrigin: 'top center', borderRadius: '4px' }} />
+                                                                    )}
+                                                                    {idx === sectionClasses.length - 1 && cls < TOTAL_CLASSES && (
+                                                                        <div className={`absolute w-3 h-16 -bottom-10 -z-10 transition-colors duration-500 ${connectorBg}`} style={{ transform: `translateX(${(getOffset(globalIdx + 1) - offset) / 2}px) rotate(${Math.atan2(100, getOffset(globalIdx + 1) - offset) * (180/Math.PI) - 90}deg)`, transformOrigin: 'top center', borderRadius: '4px' }} />
+                                                                    )}
+                                                                    
+                                                                    <div className="relative flex flex-col items-center" style={{ transform: `translateX(${offset}px)` }}>
+                                                                        <button id={isCurrent && currentLevel === levelKey ? 'active-node' : undefined} onClick={() => setSelectedClass(cls)} className={`path-node w-16 h-16 rounded-full border-b-4 flex items-center justify-center transition-all ${bgColor} ${borderColor} ${extraClasses}`}><Icon name={iconName} color={iconColor} size={28} className={iconName === 'Play' ? 'ml-1' : ''} /></button>
+                                                                        <div className="absolute top-16 font-bold text-xs bg-surface text-gray-900 px-2 py-1 rounded-full border border-gray-200 shadow-sm mt-1 whitespace-nowrap">Clase {cls}</div>
+                                                                        {isBookmarked && <div className="absolute top-0 -right-3 text-orange-500 bg-white rounded-full p-0.5 border border-orange-200 shadow-sm"><Icon name="Bookmark" size={14} /></div>}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        
+                                        {/* Bottom Trophy */}
+                                        {(() => {
+                                            const isCurrentTrophy = nextUp === TOTAL_CLASSES + 1;
+                                            const trophyOffset = getOffset(TOTAL_CLASSES);
+                                            
+                                            let title = 'Trofeo Bloqueado';
+                                            let trophyClass = 'opacity-30 grayscale blur-[2px] scale-90';
+                                            let trophyImage = './silver_trophy.png';
+
+                                            if (isGold) { 
+                                                title = '¡Dominio Dorado!'; 
+                                                trophyClass = 'drop-shadow-[0_0_40px_rgba(255,200,0,0.6)] animate-bounce-slow z-10 scale-110';
+                                                trophyImage = './gold_trophy.png';
+                                            } else if (isSilver) { 
+                                                title = '¡Curso de Plata!'; 
+                                                trophyClass = 'drop-shadow-[0_0_30px_rgba(156,163,175,0.5)] animate-bounce-slow z-10 scale-110';
+                                                trophyImage = './silver_trophy.png';
+                                            }
+
+                                            return (
+                                                <div id={isCurrentTrophy && currentLevel === levelKey ? 'active-node' : undefined} className="relative flex flex-col items-center mt-16 mb-10">
+                                                    <div className={`w-36 h-36 flex items-center justify-center transition-all duration-700 ${trophyClass}`} style={{ transform: `translateX(${trophyOffset}px)` }} onClick={() => { if(isGold) confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ['#ffc800', '#ffffff'] }); else if(isSilver) confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ['#e5e7eb', '#9ca3af', '#ffffff'] }); }}>
+                                                        <img src={trophyImage} alt={title} className="w-full h-full object-contain" />
+                                                    </div>
+                                                    <div className="absolute top-32 font-bold text-sm bg-surface/90 backdrop-blur-md px-4 py-2 rounded-full border border-gray-200 shadow-xl text-center z-20 text-gray-900 whitespace-nowrap" style={{ transform: `translateX(${trophyOffset}px)` }}>{title}</div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            };
+\n') continue;
                     
                     row.push(currentField);
                     if (row.length >= 4 && row[0].trim() !== '#' && row[0].trim() !== '') {
@@ -2936,7 +3099,7 @@
                             {note && (
                                 <div className="bg-darker p-2.5 rounded-xl border border-duogray/50">
                                     <div className="flex items-center gap-1 text-xs font-bold text-duotext mb-1"><Icon name="BookOpen" size={12} /> Apuntes:</div>
-                                    <div className="text-sm text-white/80 line-clamp-2 leading-snug whitespace-pre-wrap" dangerouslySetInnerHTML={renderRichTextHTML(note)} />
+                                    <div className="text-sm text-white/90 line-clamp-2 leading-snug whitespace-pre-wrap" dangerouslySetInnerHTML={renderRichTextHTML(note)} />
                                 </div>
                             )}
                         </div>
@@ -2945,7 +3108,7 @@
             );
         };
 
-            const SyllabusTab = () => {
+            const SyllabusTab = ({ onNavigate }) => {
                 const [expandedLevels, setExpandedLevels] = React.useState({ 'beginner': true });
                 const [expandedSections, setExpandedSections] = React.useState({});
 
@@ -2961,7 +3124,7 @@
                 return (
                     <div className="pb-32 pt-20 px-4 max-w-md mx-auto relative animate-fade-in">
                         <div className="text-center mb-8">
-                            <h2 className="text-2xl font-black text-white mb-2 tracking-tight">Temario del Curso</h2>
+                            <h2 className="text-2xl font-black text-gray-900 mb-2 tracking-tight">Temario del Curso</h2>
                             <p className="text-duotext text-sm">
                                 La estimación de los niveles del Marco Común Europeo de Referencia (A1 - C1) es un análisis educativo deducido de la progresión gramatical.
                             </p>
@@ -3071,6 +3234,20 @@
             const [showSearchModal, setShowSearchModal] = React.useState(false);
             const [searchQuery, setSearchQuery] = React.useState('');
             const [sectionModal, setSectionModal] = React.useState(null);
+            
+            const handleSyllabusNav = (level, classId, sectionIdx) => {
+                setCurrentLevel(level);
+                setCurrentTab('learn');
+                setTimeout(() => {
+                    if (classId) {
+                        const node = document.getElementById(`node-${level}-${classId}`);
+                        if (node) node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } else if (sectionIdx !== undefined) {
+                        const hdr = document.getElementById(`section-hdr-${level}-${sectionIdx}`);
+                        if (hdr) hdr.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }, 150);
+            };
 
             // Estados para visualización a pantalla completa
             const [descExpanded, setDescExpanded] = React.useState(false);
@@ -3114,9 +3291,9 @@
 
             React.useEffect(() => {
                 const bgColors = {
-                    'beginner': 'radial-gradient(circle at top, #432104 0%, #111b21 70%)',
-                    'intermediate': 'radial-gradient(circle at top, #143601 0%, #111b21 70%)',
-                    'advanced': 'radial-gradient(circle at top, #2b1d3d 0%, #111b21 70%)'
+                    'beginner': 'radial-gradient(circle at top, #fff7ed 0%, #f9fafb 70%)',
+                    'intermediate': 'radial-gradient(circle at top, #f0fdf4 0%, #f9fafb 70%)',
+                    'advanced': 'radial-gradient(circle at top, #faf5ff 0%, #f9fafb 70%)'
                 };
                 document.body.style.background = bgColors[currentLevel] || bgColors['intermediate'];
                 document.body.style.backgroundAttachment = 'fixed';
@@ -3128,8 +3305,6 @@
                         const activeNode = document.getElementById('active-node');
                         if (activeNode) {
                             activeNode.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
-                        } else {
-                            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                         }
                     }, 150);
                 }
@@ -3548,7 +3723,7 @@
 
 
 
-            const renderSyllabusTab = () => <SyllabusTab />;
+            const renderSyllabusTab = () => <SyllabusTab onNavigate={handleSyllabusNav} />;
 
             const renderTabBar = () => (
                 <nav className="fixed bottom-0 w-full bg-darker/80 backdrop-blur-xl border-t border-white/5 py-3 px-1 sm:px-4 z-40 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
@@ -3573,20 +3748,20 @@
                 
                 return (
                     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setSectionModal(null)}>
-                        <div className="bg-dark w-full max-w-md h-[80vh] rounded-t-3xl shadow-2xl flex flex-col animate-slide-up" onClick={e => e.stopPropagation()}>
+                        <div className="bg-white w-full max-w-md h-[80vh] rounded-t-3xl shadow-2xl flex flex-col animate-slide-up" onClick={e => e.stopPropagation()}>
                             <div className={`p-4 ${theme.bg} rounded-t-3xl flex justify-between items-center border-b-4 ${theme.border}`}>
                                 <div>
-                                    <h2 className="text-xl font-bold text-white">Sección {sectionModal.sectionIdx + 1}</h2>
-                                    <p className="text-sm text-white/80">{sectionModal.title.split(' (')[0]}</p>
+                                    <h2 className="text-xl font-bold text-gray-900">Sección {sectionModal.sectionIdx + 1}</h2>
+                                    <p className="text-sm text-white/90">{sectionModal.title.split(' (')[0]}</p>
                                 </div>
                                 <button onClick={() => setSectionModal(null)} className="p-2 bg-black/20 rounded-full text-white hover:bg-black/40 transition-colors"><Icon name="X" /></button>
                             </div>
                             <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-20">
                                 {sectionModal.classes.map(c => (
                                     <div key={c.id} className="bg-surface p-4 rounded-xl border border-white/5 shadow-sm">
-                                        <h3 className="font-bold text-white mb-2">Clase {c.id}: {c.title}</h3>
+                                        <h3 className="font-bold text-gray-900 mb-2">Clase {c.id}: {c.title}</h3>
                                         <p className="text-sm text-duotext mb-3">{c.theme}</p>
-                                        <div className="text-sm italic text-gray-300 bg-darker/50 p-3 rounded-lg" dangerouslySetInnerHTML={renderRichTextHTML(c.examples)} />
+                                        <div className="text-sm italic text-gray-600 bg-gray-100 p-3 rounded-lg" dangerouslySetInnerHTML={renderRichTextHTML(c.examples)} />
                                     </div>
                                 ))}
                             </div>
@@ -3634,7 +3809,7 @@
                                         </h4>
                                         <Icon name="Maximize2" size={16} className="text-duoblue group-hover:scale-110 transition-transform" />
                                     </div>
-                                    <div className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed line-clamp-3" dangerouslySetInnerHTML={renderRichTextHTML(courseInfo.description)} />
+                                    <div className="text-sm text-white/90 whitespace-pre-wrap leading-relaxed line-clamp-3" dangerouslySetInnerHTML={renderRichTextHTML(courseInfo.description)} />
                                     <div className="mt-3 text-center text-[10px] font-bold text-duoblue/80 uppercase tracking-widest border-t border-duogray/50 pt-2">Toca para leer todo</div>
                                 </div>
                             )}
@@ -3905,7 +4080,7 @@
             };
 
             return (
-                <div className="min-h-screen relative font-sans overflow-x-hidden">
+                <div className="min-h-screen relative font-sans overflow-x-clip">
                     {renderHeader()}
                     <main>
                         {mountedTabs['learn'] && <div style={{ display: currentTab === 'learn' ? 'block' : 'none' }}>{renderLearnTab()}</div>}
