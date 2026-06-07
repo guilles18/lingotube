@@ -3612,11 +3612,24 @@
                                 </div>
                                 <button onClick={() => setSectionModal(null)} className="bg-gray-100 p-2 rounded-full text-gray-500 hover:text-gray-700 shadow-sm"><Icon name="X" /></button>
                             </div>
-                            <div className="text-sm text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-2xl border border-gray-200 shadow-inner">
-                                {sectionModal.points && (
-                                    <ul className="list-disc pl-4 space-y-2">
-                                        {sectionModal.points.map((p, i) => <li key={i}>{p}</li>)}
-                                    </ul>
+                            <div className="text-sm text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-2xl border border-gray-200 shadow-inner max-h-[60vh] overflow-y-auto">
+                                {sectionModal.classes && (
+                                    <div className="space-y-4">
+                                        {sectionModal.classes.map(cls => (
+                                            <div key={cls.id} className="bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
+                                                <div className="flex items-start gap-2 mb-2">
+                                                    <span className={`bg-${theme.bg.split('-')[1]}/20 text-${theme.bg.split('-')[1]} text-[10px] font-black px-2 py-0.5 rounded shrink-0 mt-0.5`}>CLASE {cls.id}</span>
+                                                    <h5 className="font-bold text-gray-900 text-sm leading-tight">{cls.title}</h5>
+                                                </div>
+                                                <div className="pl-1">
+                                                    <p className="text-xs text-gray-600 mb-2 leading-relaxed"><strong className="text-gray-800">Tema:</strong> {cls.theme}</p>
+                                                    <div className="bg-gray-50 p-2 rounded text-xs text-duoblue italic border-l-2 border-duoblue/30 leading-relaxed">
+                                                        {cls.examples}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                             <button onClick={() => setSectionModal(null)} className={`duo-btn w-full font-bold py-3 px-2 rounded-2xl flex items-center justify-center gap-2 text-[15px] border-b-4 ${theme.bg} text-white ${theme.border}`}>
