@@ -851,8 +851,8 @@
                                         <span className="text-[10px] text-duotext flex items-center gap-1"><span className={`w-2 h-2 rounded-full ${l.colorDone}`}></span> Repasos: {Math.round((l.rev/TOTAL_CLASSES)*100)}%</span>
                                     </div>
                                     <div className="absolute right-0 top-0 bottom-0 flex items-center justify-center w-14">
-                                        {isGold ? <img src="./gold_trophy.png" alt="Oro" className="w-16 h-16 scale-125 drop-shadow-[0_0_15px_rgba(255,200,0,0.5)] animate-bounce-slow absolute -right-2" /> :
-                                         isSilver ? <img src="./silver_trophy.png" alt="Plata" className="w-16 h-16 scale-125 drop-shadow-[0_0_15px_rgba(229,231,235,0.4)] absolute -right-2" /> :
+                                        {isGold ? <img src="./gold_trophy.png" alt="Oro" className="w-16 h-16 object-contain scale-125 drop-shadow-[0_0_15px_rgba(255,200,0,0.5)] animate-bounce-slow absolute -right-2" /> :
+                                         isSilver ? <img src="./silver_trophy.png" alt="Plata" className="w-16 h-16 object-contain scale-125 drop-shadow-[0_0_15px_rgba(229,231,235,0.4)] absolute -right-2" /> :
                                          <div className="w-10 h-10 rounded-full bg-darker border border-dashed border-white/10 flex items-center justify-center opacity-40 mr-2"><Icon name="Lock" size={16} color="#afbac0" /></div>}
                                     </div>
                                 </div>
