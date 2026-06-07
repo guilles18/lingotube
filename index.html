@@ -292,11 +292,13 @@
                         completed: { beginner: [], intermediate: [], advanced: [] },
                         reviews: { beginner: [], intermediate: [], advanced: [] },
                         bookmarks: { beginner: [], intermediate: [], advanced: [] },
+                        reviewedBookmarks: { beginner: [], intermediate: [], advanced: [] },
                         notes: {}, chunks: {}, routineProgress: {}
                     };
                 } else {
                     if (!parsed.routineProgress) parsed.routineProgress = {};
                     if (!parsed.bookmarks) parsed.bookmarks = { beginner: [], intermediate: [], advanced: [] };
+                    if (!parsed.reviewedBookmarks) parsed.reviewedBookmarks = { beginner: [], intermediate: [], advanced: [] };
                     if (!parsed.chunks) parsed.chunks = {};
                 }
                 return parsed;
@@ -343,6 +345,19 @@
                         bookmarks: {
                             ...prev.bookmarks,
                             [level]: isBookmarked ? prev.bookmarks[level].filter(id => id !== classId) : [...prev.bookmarks[level], classId]
+                        }
+                    };
+                });
+            };
+
+            const toggleReviewedBookmark = (level, classId) => {
+                setData(prev => {
+                    const isReviewed = prev.reviewedBookmarks[level].includes(classId);
+                    return {
+                        ...prev,
+                        reviewedBookmarks: {
+                            ...prev.reviewedBookmarks,
+                            [level]: isReviewed ? prev.reviewedBookmarks[level].filter(id => id !== classId) : [...prev.reviewedBookmarks[level], classId]
                         }
                     };
                 });
@@ -422,7 +437,7 @@
                 else alert("No se encontraron los archivos .csv. Asegúrate de que estén subidos a GitHub.");
             };
 
-            return { data, toggleProgress, toggleBookmark, toggleRoutinePhase, saveNote, saveChunk, courseData, updateCourseData, exportData, importData, syncFromServer };
+            return { data, toggleProgress, toggleBookmark, toggleReviewedBookmark, toggleRoutinePhase, saveNote, saveChunk, courseData, updateCourseData, exportData, importData, syncFromServer };
         }
 
         const getOffset = (index) => {
@@ -435,15 +450,15 @@
             return 0;
         };
         
-        const BookmarkCard = ({ lvl, classId, note, chunks, displayTitle, toggleBookmark, setCurrentLevel, setSelectedClass, saveChunk, saveNote, setFullScreenEdit }) => {
+        const BookmarkCard = ({ lvl, classId, note, chunks, displayTitle, toggleBookmark, isReviewed, toggleReviewedBookmark, setCurrentLevel, setSelectedClass, saveChunk, saveNote, setFullScreenEdit }) => {
             const [expanded, setExpanded] = React.useState(false);
             const classKey = `${lvl.key}-${classId}`;
             return (
-                <div className="bg-surface border-2 border-orange-500/30 rounded-2xl p-4 transition-all shadow-md animate-[slideUp_0.3s_ease-out]">
+                <div className={`bg-surface border-2 rounded-2xl p-4 transition-all shadow-md animate-slide-up ${isReviewed ? 'border-duogreen/30 opacity-70' : 'border-orange-500/30'}`}>
                     <div className="flex justify-between items-start mb-2 cursor-pointer" onClick={() => setExpanded(!expanded)}>
                         <div className="flex-1">
                             <span className={`text-xs font-bold uppercase tracking-wider ${lvl.color} ${lvl.bg} px-2 py-1 rounded-md inline-block mb-1`}>{lvl.label} • #{classId}</span>
-                            <h3 className="font-bold text-white leading-tight pr-2">{displayTitle}</h3>
+                            <h3 className={`font-bold leading-tight pr-2 ${isReviewed ? 'text-duotext line-through' : 'text-white'}`}>{displayTitle}</h3>
                         </div>
                         <div className="flex gap-2">
                             <Icon name={expanded ? "ChevronUp" : "ChevronDown"} size={20} className="text-duotext" />
@@ -477,7 +492,12 @@
                                 </div>
                                 <textarea className="w-full bg-dark border-2 border-duogray rounded-xl p-3 text-white focus:outline-none focus:border-duoblue resize-none h-20 text-[14px]" placeholder="Escribe tus apuntes libres aquí..." value={note} onChange={(e) => saveNote(classKey, e.target.value)}></textarea>
                             </div>
-                            <button className="mt-4 duo-btn w-full bg-duoblue text-white font-bold py-3 rounded-xl text-sm" onClick={() => { setCurrentLevel(lvl.key); setSelectedClass(classId); }}>Ir a la clase completa</button>
+                            <div className="flex gap-2 mt-4">
+                                <button className="duo-btn flex-1 bg-duoblue text-white font-bold py-3 rounded-xl text-sm" onClick={() => { setCurrentLevel(lvl.key); setSelectedClass(classId); }}>Ir a clase</button>
+                                <button className={`duo-btn flex-1 font-bold py-3 rounded-xl text-sm border-b-4 flex items-center justify-center gap-2 ${isReviewed ? 'bg-surface text-duotext border-duogray hover:bg-darker' : 'bg-duogreen text-white border-duogreenDark hover:bg-duogreen/90'}`} onClick={() => toggleReviewedBookmark(lvl.key, classId)}>
+                                    <Icon name="CheckCircle" size={18} /> {isReviewed ? 'Desmarcar' : 'Ya lo repasé'}
+                                </button>
+                            </div>
                         </div>
                     ) : (
                         <div className="mt-3 cursor-pointer" onClick={() => setExpanded(true)}>
@@ -500,8 +520,9 @@
         };
 
         const App = () => {
-            const { data, toggleProgress, toggleBookmark, toggleRoutinePhase, saveNote, saveChunk, courseData, updateCourseData, exportData, importData, syncFromServer } = useAppStore();
+            const { data, toggleProgress, toggleBookmark, toggleReviewedBookmark, toggleRoutinePhase, saveNote, saveChunk, courseData, updateCourseData, exportData, importData, syncFromServer } = useAppStore();
             const [currentTab, setCurrentTab] = React.useState('learn');
+            const [collapsedLevels, setCollapsedLevels] = React.useState({ beginner: false, intermediate: false, advanced: false });
             const [currentLevel, setCurrentLevel] = React.useState(() => {
                 const isLevelDone = (lvl) => {
                     const done = data?.completed?.[lvl]?.length || 0;
@@ -652,17 +673,26 @@
                                 const isCurrentTrophy = nextUp === TOTAL_CLASSES + 1;
                                 const trophyOffset = getOffset(TOTAL_CLASSES);
                                 
-                                let trophyImage = null, title = 'Trofeo Bloqueado', trophyAnimate = 'opacity-50 grayscale';
+                                let trophyContent = <Icon name="Lock" size={36} color="#afbac0" />;
+                                let title = 'Trofeo Bloqueado';
+                                let trophyClass = 'bg-surface border-4 border-dashed border-duogray opacity-60';
 
-                                if (isGold) { trophyImage = './gold_trophy.png'; title = '¡Dominio Dorado!'; trophyAnimate = 'drop-shadow-[0_0_40px_rgba(255,200,0,0.6)] animate-bounce-slow'; } 
-                                else if (isSilver) { trophyImage = './silver_trophy.png'; title = '¡Curso de Plata!'; trophyAnimate = 'drop-shadow-[0_0_30px_rgba(229,231,235,0.5)] animate-bounce-slow'; }
+                                if (isGold) { 
+                                    title = '¡Dominio Dorado!'; 
+                                    trophyClass = 'bg-gradient-to-br from-[#ffed4a] to-[#ffc800] border border-[#ffe066] shadow-[0_0_50px_rgba(255,200,0,0.6)] animate-bounce-slow z-10';
+                                    trophyContent = <Icon name="Award" size={64} color="#ffffff" className="drop-shadow-lg" />;
+                                } else if (isSilver) { 
+                                    title = '¡Curso de Plata!'; 
+                                    trophyClass = 'bg-gradient-to-br from-[#f3f4f6] to-[#9ca3af] border border-[#e5e7eb] shadow-[0_0_40px_rgba(229,231,235,0.4)] animate-bounce-slow z-10';
+                                    trophyContent = <Icon name="Trophy" size={64} color="#111b21" className="opacity-80 drop-shadow-md" />;
+                                }
 
                                 return (
                                     <div ref={isCurrentTrophy ? activeNodeRef : null} className="relative flex flex-col items-center mt-16 mb-10">
-                                        <div className={`w-32 h-32 flex items-center justify-center transition-all ${trophyAnimate}`} style={{ transform: `translateX(${trophyOffset}px)` }} onClick={() => { if(isGold) confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ['#ffc800', '#ffffff'] }); else if(isSilver) confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ['#e5e7eb', '#9ca3af', '#ffffff'] }); }}>
-                                            {trophyImage ? <img src={trophyImage} alt="Trofeo" className="w-full h-full object-contain" /> : <div className="w-24 h-24 rounded-full bg-surface border-4 border-dashed border-duogray flex items-center justify-center"><Icon name="Lock" size={32} color="#afbac0" /></div>}
+                                        <div className={`w-32 h-32 flex items-center justify-center rounded-full transition-all duration-700 ${trophyClass}`} style={{ transform: `translateX(${trophyOffset}px)` }} onClick={() => { if(isGold) confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ['#ffc800', '#ffffff'] }); else if(isSilver) confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ['#e5e7eb', '#9ca3af', '#ffffff'] }); }}>
+                                            {trophyContent}
                                         </div>
-                                        <div className="absolute top-28 font-bold text-sm bg-darker/90 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 shadow-xl text-center z-10 text-white whitespace-nowrap" style={{ transform: `translateX(${trophyOffset}px)` }}>{title}</div>
+                                        <div className="absolute top-28 font-bold text-sm bg-darker/90 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 shadow-xl text-center z-20 text-white whitespace-nowrap" style={{ transform: `translateX(${trophyOffset}px)` }}>{title}</div>
                                     </div>
                                 );
                             })()}
@@ -697,18 +727,23 @@
                                 {levels.map(lvl => {
                                     const levelBookmarks = data.bookmarks[lvl.key];
                                     if (levelBookmarks.length === 0) return null;
+                                    const isCollapsed = collapsedLevels[lvl.key];
                                     return (
                                         <div key={lvl.key} className="flex flex-col gap-4">
-                                            <div className={`font-bold text-lg flex items-center gap-2 ${lvl.color}`}>
-                                                <span className={`w-8 h-8 rounded-full flex items-center justify-center ${lvl.bg}`}><Icon name="BookOpen" size={16} /></span>
-                                                {lvl.label}
+                                            <div className={`font-bold text-lg flex items-center justify-between cursor-pointer p-2 -mx-2 rounded-xl hover:bg-surface/50 transition-colors ${lvl.color}`} onClick={() => setCollapsedLevels(prev => ({ ...prev, [lvl.key]: !prev[lvl.key] }))}>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`w-8 h-8 rounded-full flex items-center justify-center ${lvl.bg}`}><Icon name="BookOpen" size={16} /></span>
+                                                    {lvl.label} <span className="text-xs text-duotext bg-darker px-2 py-0.5 rounded-full border border-white/5 ml-2">{levelBookmarks.length}</span>
+                                                </div>
+                                                <Icon name={isCollapsed ? "ChevronDown" : "ChevronUp"} size={20} className="text-duotext" />
                                             </div>
-                                            {levelBookmarks.map(classId => {
+                                            {!isCollapsed && levelBookmarks.map(classId => {
                                                 const courseInfo = courseData[lvl.key]?.find(c => c.id === classId);
                                                 const displayTitle = courseInfo && courseInfo.title ? courseInfo.title : `Clase ${classId}`;
                                                 const note = data.notes[`${lvl.key}-${classId}`] || '';
                                                 const chunks = data.chunks[`${lvl.key}-${classId}`] || '';
-                                                return <BookmarkCard key={`${lvl.key}-${classId}`} lvl={lvl} classId={classId} note={note} chunks={chunks} displayTitle={displayTitle} toggleBookmark={toggleBookmark} setCurrentLevel={setCurrentLevel} setSelectedClass={setSelectedClass} saveChunk={saveChunk} saveNote={saveNote} setFullScreenEdit={setFullScreenEdit} />;
+                                                const isReviewed = data.reviewedBookmarks?.[lvl.key]?.includes(classId) || false;
+                                                return <BookmarkCard key={`${lvl.key}-${classId}`} lvl={lvl} classId={classId} note={note} chunks={chunks} displayTitle={displayTitle} toggleBookmark={toggleBookmark} isReviewed={isReviewed} toggleReviewedBookmark={toggleReviewedBookmark} setCurrentLevel={setCurrentLevel} setSelectedClass={setSelectedClass} saveChunk={saveChunk} saveNote={saveNote} setFullScreenEdit={setFullScreenEdit} />;
                                             })}
                                         </div>
                                     );
@@ -731,10 +766,13 @@
                 const totalReviewsDone = brDone + irDone + arDone;
 
                 const totalClasses = TOTAL_CLASSES * 3;
-                const minsClassesOnly = totalClassesDone * CLASS_DURATION;
-                const hoursClassesOnly = (minsClassesOnly / 60).toFixed(1);
-                const minsWithReviews = minsClassesOnly + (totalReviewsDone * REVIEW_DURATION);
-                const hoursWithReviews = (minsWithReviews / 60).toFixed(1);
+                const minsDone = (totalClassesDone * CLASS_DURATION) + (totalReviewsDone * REVIEW_DURATION);
+                const hoursDone = (minsDone / 60).toFixed(1);
+                
+                const minsTotalCourse = (totalClasses * CLASS_DURATION) + (totalClasses * REVIEW_DURATION);
+                const hoursTotalCourse = (minsTotalCourse / 60).toFixed(0);
+                
+                const hoursLeft = ((minsTotalCourse - minsDone) / 60).toFixed(1);
 
                 return (
                     <div className="pb-24 pt-20 px-4 max-w-md mx-auto">
@@ -762,22 +800,30 @@
                                     <div className="text-[11px] text-duogold mt-1 font-medium">{Math.round((totalReviewsDone/totalClasses)*100)}% de {totalClasses}</div>
                                 </div>
                             </div>
-                            <div className="bg-surface p-4 rounded-3xl border border-white/5 flex flex-col justify-between shadow-lg shadow-black/20 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-20 h-20 bg-duoblue/5 rounded-bl-full"></div>
-                                <Icon name="PlayCircle" className="mb-2 relative z-10" color="#1cb0f6" size={32} />
-                                <div className="relative z-10">
-                                    <div className="text-2xl font-black text-white">{hoursClassesOnly}<span className="text-lg">h</span></div>
-                                    <div className="text-[11px] font-bold text-duotext uppercase mt-1 tracking-wider">Tiempo en Clases</div>
-                                    <div className="text-[11px] text-duoblue mt-1 font-medium">Horas netas de estudio</div>
+                            <div className="col-span-2 bg-gradient-to-r from-duoblue/10 to-transparent p-5 rounded-3xl border border-duoblue/20 flex items-center justify-between shadow-lg shadow-black/20">
+                                <div>
+                                    <div className="text-3xl font-black text-white flex items-baseline gap-1">{hoursDone}<span className="text-lg text-duoblue">h</span></div>
+                                    <div className="text-xs font-bold text-duotext uppercase mt-1 tracking-wider">Horas Estudiadas</div>
+                                    <div className="text-[11px] text-duoblue mt-1 font-medium">Clases y repasos actuales</div>
+                                </div>
+                                <div className="w-16 h-16 rounded-full bg-duoblue/20 flex items-center justify-center">
+                                    <Icon name="Activity" color="#1cb0f6" size={32} />
                                 </div>
                             </div>
-                            <div className="bg-surface p-4 rounded-3xl border border-white/5 flex flex-col justify-between shadow-lg shadow-black/20 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-20 h-20 bg-orange-500/5 rounded-bl-full"></div>
-                                <Icon name="Star" className="mb-2 relative z-10" color="#ffc800" size={32} />
-                                <div className="relative z-10">
-                                    <div className="text-2xl font-black text-white">{hoursWithReviews}<span className="text-lg">h</span></div>
-                                    <div className="text-[11px] font-bold text-duotext uppercase mt-1 tracking-wider">Duración Total</div>
-                                    <div className="text-[11px] text-duogold mt-1 font-medium">Clases + Repasos</div>
+                            <div className="bg-surface p-4 rounded-3xl border border-white/5 flex flex-col justify-between shadow-lg shadow-black/20">
+                                <Icon name="Map" className="mb-2" color="#afbac0" size={28} />
+                                <div>
+                                    <div className="text-2xl font-black text-white">{hoursTotalCourse}<span className="text-lg">h</span></div>
+                                    <div className="text-[10px] font-bold text-duotext uppercase mt-1 tracking-wider">Total del Curso</div>
+                                    <div className="text-[10px] text-duogray mt-1 font-medium">Roadmap entero</div>
+                                </div>
+                            </div>
+                            <div className="bg-surface p-4 rounded-3xl border border-white/5 flex flex-col justify-between shadow-lg shadow-black/20">
+                                <Icon name="Target" className="mb-2" color="#ff4b4b" size={28} />
+                                <div>
+                                    <div className="text-2xl font-black text-white">{hoursLeft}<span className="text-lg">h</span></div>
+                                    <div className="text-[10px] font-bold text-duotext uppercase mt-1 tracking-wider">Horas Restantes</div>
+                                    <div className="text-[10px] text-[#ff4b4b] mt-1 font-medium">Para dominarlo todo</div>
                                 </div>
                             </div>
                         </div>
@@ -804,8 +850,8 @@
                                         <span className="text-[10px] text-duotext flex items-center gap-1"><span className={`w-2 h-2 rounded-full ${l.colorDone}`}></span> Repasos: {Math.round((l.rev/TOTAL_CLASSES)*100)}%</span>
                                     </div>
                                     <div className="absolute right-0 top-0 bottom-0 flex items-center justify-center w-14">
-                                        {isGold ? <img src="./gold_trophy.png" alt="Oro" className="w-12 h-12 drop-shadow-[0_0_15px_rgba(255,200,0,0.5)] animate-bounce-slow" /> :
-                                         isSilver ? <img src="./silver_trophy.png" alt="Plata" className="w-12 h-12 drop-shadow-[0_0_15px_rgba(229,231,235,0.4)]" /> :
+                                        {isGold ? <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#ffed4a] to-[#ffc800] border border-[#ffe066] shadow-[0_0_20px_rgba(255,200,0,0.5)] flex items-center justify-center animate-bounce-slow"><Icon name="Award" size={24} color="#ffffff" /></div> :
+                                         isSilver ? <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#f3f4f6] to-[#9ca3af] border border-[#e5e7eb] shadow-[0_0_15px_rgba(229,231,235,0.4)] flex items-center justify-center animate-bounce-slow"><Icon name="Trophy" size={24} color="#111b21" className="opacity-80" /></div> :
                                          <div className="w-10 h-10 rounded-full bg-darker border border-dashed border-white/10 flex items-center justify-center opacity-40"><Icon name="Lock" size={16} color="#afbac0" /></div>}
                                     </div>
                                 </div>
@@ -1058,11 +1104,11 @@
             return (
                 <div className="min-h-screen relative font-sans overflow-x-hidden">
                     {renderHeader()}
-                    <main className="animate-fade-in" key={currentTab}>
-                        {currentTab === 'learn' && renderLearnTab()}
-                        {currentTab === 'bookmarks' && renderBookmarksTab()}
-                        {currentTab === 'stats' && renderStatsTab()}
-                        {currentTab === 'profile' && renderProfileTab()}
+                    <main>
+                        <div style={{ display: currentTab === 'learn' ? 'block' : 'none' }}>{renderLearnTab()}</div>
+                        <div style={{ display: currentTab === 'bookmarks' ? 'block' : 'none' }}>{renderBookmarksTab()}</div>
+                        <div style={{ display: currentTab === 'stats' ? 'block' : 'none' }}>{renderStatsTab()}</div>
+                        <div style={{ display: currentTab === 'profile' ? 'block' : 'none' }}>{renderProfileTab()}</div>
                     </main>
                     
                     {showScrollTop && currentTab === 'learn' && (
