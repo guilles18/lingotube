@@ -2721,6 +2721,11 @@
                         reviewedBookmarks: { beginner: [], intermediate: [], advanced: [] },
                         notes: {}, chunks: {}, routineProgress: {}
                     };
+                } else {
+                    if (!parsed.routineProgress) parsed.routineProgress = {};
+                    if (!parsed.bookmarks) parsed.bookmarks = { beginner: [], intermediate: [], advanced: [] };
+                    if (!parsed.reviewedBookmarks) parsed.reviewedBookmarks = { beginner: [], intermediate: [], advanced: [] };
+                    if (!parsed.chunks) parsed.chunks = {};
                 }
                 
                 // --- MIGRATION FOR CLASS 195 ---
@@ -2732,12 +2737,7 @@
                         parsed.reviews[lvl].push(195);
                     }
                 });
-                // -------------------------------- else {
-                    if (!parsed.routineProgress) parsed.routineProgress = {};
-                    if (!parsed.bookmarks) parsed.bookmarks = { beginner: [], intermediate: [], advanced: [] };
-                    if (!parsed.reviewedBookmarks) parsed.reviewedBookmarks = { beginner: [], intermediate: [], advanced: [] };
-                    if (!parsed.chunks) parsed.chunks = {};
-                }
+                // --------------------------------
                 return parsed;
             });
 
