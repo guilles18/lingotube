@@ -2721,7 +2721,18 @@
                         reviewedBookmarks: { beginner: [], intermediate: [], advanced: [] },
                         notes: {}, chunks: {}, routineProgress: {}
                     };
-                } else {
+                }
+                
+                // --- MIGRATION FOR CLASS 195 ---
+                ['beginner', 'intermediate', 'advanced'].forEach(lvl => {
+                    if (parsed.completed && parsed.completed[lvl] && parsed.completed[lvl].length === 194 && !parsed.completed[lvl].includes(195)) {
+                        parsed.completed[lvl].push(195);
+                    }
+                    if (parsed.reviews && parsed.reviews[lvl] && parsed.reviews[lvl].length === 194 && !parsed.reviews[lvl].includes(195)) {
+                        parsed.reviews[lvl].push(195);
+                    }
+                });
+                // -------------------------------- else {
                     if (!parsed.routineProgress) parsed.routineProgress = {};
                     if (!parsed.bookmarks) parsed.bookmarks = { beginner: [], intermediate: [], advanced: [] };
                     if (!parsed.reviewedBookmarks) parsed.reviewedBookmarks = { beginner: [], intermediate: [], advanced: [] };
