@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lingotube-v1';
+const CACHE_NAME = 'lingotube-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -19,6 +19,17 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
   e.waitUntil(self.clients.claim());
 });
 
