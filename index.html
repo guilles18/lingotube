@@ -2781,8 +2781,8 @@
             const [cloudSyncStatus, setCloudSyncStatus] = React.useState('idle'); // 'idle' | 'syncing' | 'saved' | 'error'
             const [lastCloudSave, setLastCloudSave] = React.useState(null);
             const isInitialCloudSyncDone = React.useRef(false);
-
             const isMergingFromCloud = React.useRef(false);
+            const lastSavedJsonRef = React.useRef(JSON.stringify(data));
 
             // Escuchar cambios de sesión de Google
             React.useEffect(() => {
@@ -2793,8 +2793,12 @@
                         setCloudSyncStatus('syncing');
                         try {
                             const docRef = firestoreDb.collection('user_progress').doc(user.uid);
-                            const docSnap = await docRef.get();
-                            if (docSnap.exists) {
+                            // Timeout de seguridad de 6s para evitar que una red lenta o conexión colgada congele la UI
+                            const docSnap = await Promise.race([
+                                docRef.get(),
+                                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000))
+                            ]);
+                            if (docSnap && docSnap.exists) {
                                 const cloudData = docSnap.data();
                                 if (cloudData && cloudData.progress) {
                                     isMergingFromCloud.current = true;
@@ -2825,6 +2829,7 @@
                                             chunks: { ...(local.chunks || {}), ...(cp.chunks || {}) },
                                             routineProgress: { ...(local.routineProgress || {}), ...(cp.routineProgress || {}) }
                                         };
+                                        lastSavedJsonRef.current = JSON.stringify(merged);
                                         return merged;
                                     });
                                 }
@@ -2839,18 +2844,15 @@
                                     displayName: user.displayName,
                                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                                 });
+                                lastSavedJsonRef.current = JSON.stringify(data);
                                 setLastCloudSave(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
                             }
-                            setCloudSyncStatus('saved');
                         } catch (fetchErr) {
-                            console.error("Error al sincronizar con Firestore:", fetchErr);
-                            setCloudSyncStatus('error');
+                            console.warn("Sincronización inicial con Firestore:", fetchErr.message || fetchErr);
                         } finally {
-                            setTimeout(() => {
-                                isMergingFromCloud.current = false;
-                                isInitialCloudSyncDone.current = true;
-                                setCloudSyncStatus('saved');
-                            }, 500);
+                            isMergingFromCloud.current = false;
+                            isInitialCloudSyncDone.current = true;
+                            setCloudSyncStatus('saved');
                         }
                     } else {
                         setCloudSyncStatus('idle');
@@ -2859,10 +2861,16 @@
                 return () => unsubscribe();
             }, []);
 
-            // Guardado automático en Firestore cada vez que 'data' cambia (con debounce y a prueba de bloqueos)
+            // Guardado automático en Firestore cada vez que 'data' cambia (con debounce y control de cambios reales)
             React.useEffect(() => {
                 if (!cloudUser || !firestoreDb || !isInitialCloudSyncDone.current) return;
                 if (isMergingFromCloud.current) return;
+
+                const currentJson = JSON.stringify(data);
+                // Si la información actual es exactamente igual a la última guardada en la nube, no disparar guardado
+                if (lastSavedJsonRef.current && currentJson === lastSavedJsonRef.current) {
+                    return;
+                }
 
                 setCloudSyncStatus('syncing');
                 const timeoutId = setTimeout(async () => {
@@ -2876,6 +2884,7 @@
                             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                         }, { merge: true });
 
+                        lastSavedJsonRef.current = currentJson;
                         setCloudSyncStatus('saved');
                         setLastCloudSave(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
                     } catch (saveErr) {
@@ -2886,7 +2895,7 @@
 
                 const safetyTimer = setTimeout(() => {
                     setCloudSyncStatus(prev => prev === 'syncing' ? 'saved' : prev);
-                }, 3000);
+                }, 3500);
 
                 return () => {
                     clearTimeout(timeoutId);
@@ -2925,6 +2934,9 @@
                     await firebaseAuth.signOut();
                     setCloudUser(null);
                     setCloudSyncStatus('idle');
+                    setLastCloudSave(null);
+                    isInitialCloudSyncDone.current = false;
+                    lastSavedJsonRef.current = '';
                 }
             };
 

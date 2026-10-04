@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lingotube-v6';
+const CACHE_NAME = 'lingotube-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -8,7 +8,10 @@ const ASSETS = [
   'https://unpkg.com/@babel/standalone@7.23.6/babel.min.js',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/lucide@latest',
-  'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js'
+  'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js',
+  'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js'
 ];
 
 self.addEventListener('install', (e) => {
@@ -45,13 +48,32 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
 
+  const url = new URL(e.request.url);
+
+  // Solo interceptar peticiones http/https
+  if (!url.protocol.startsWith('http')) return;
+
+  // NUNCA interceptar llamadas a APIs de Firebase, Auth, Firestore o Google
+  const hostname = url.hostname;
+  if (
+    hostname.includes('firestore.googleapis.com') ||
+    hostname.includes('identitytoolkit') ||
+    hostname.includes('securetoken') ||
+    hostname.includes('accounts.google.com') ||
+    hostname.includes('apis.google.com') ||
+    hostname.includes('firebaseio.com') ||
+    hostname.includes('firebaseapp.com')
+  ) {
+    return;
+  }
+
   e.respondWith(
     caches.match(e.request, { ignoreSearch: true }).then((cachedResponse) => {
       if (cachedResponse) {
-          // Si está en cache, actualizar en background para futuras visitas
+          // Si está en cache, actualizar en background para futuras visitas (solo recursos no opacos)
           e.waitUntil(
               fetch(e.request).then((res) => {
-                  if (res && res.status === 200) {
+                  if (res && res.status === 200 && res.type !== 'opaque') {
                       caches.open(CACHE_NAME).then(cache => cache.put(e.request, res.clone()));
                   }
               }).catch(() => {})
@@ -61,7 +83,7 @@ self.addEventListener('fetch', (e) => {
 
       // Si NO está en cache, ir a la red
       return fetch(e.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type !== 'opaque') {
               const resClone = networkResponse.clone();
               caches.open(CACHE_NAME).then(cache => cache.put(e.request, resClone));
           }
