@@ -2782,6 +2782,8 @@
             const [lastCloudSave, setLastCloudSave] = React.useState(null);
             const isInitialCloudSyncDone = React.useRef(false);
 
+            const isMergingFromCloud = React.useRef(false);
+
             // Escuchar cambios de sesión de Google
             React.useEffect(() => {
                 if (!firebaseAuth) return;
@@ -2795,7 +2797,7 @@
                             if (docSnap.exists) {
                                 const cloudData = docSnap.data();
                                 if (cloudData && cloudData.progress) {
-                                    // Mezclar de forma inteligente: mantener lo más avanzado
+                                    isMergingFromCloud.current = true;
                                     setData(local => {
                                         const cp = cloudData.progress;
                                         const merged = {
@@ -2840,10 +2842,15 @@
                                 setLastCloudSave(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
                             }
                             setCloudSyncStatus('saved');
-                            isInitialCloudSyncDone.current = true;
                         } catch (fetchErr) {
                             console.error("Error al sincronizar con Firestore:", fetchErr);
                             setCloudSyncStatus('error');
+                        } finally {
+                            setTimeout(() => {
+                                isMergingFromCloud.current = false;
+                                isInitialCloudSyncDone.current = true;
+                                setCloudSyncStatus('saved');
+                            }, 500);
                         }
                     } else {
                         setCloudSyncStatus('idle');
@@ -2855,6 +2862,7 @@
             // Guardado automático en Firestore cada vez que 'data' cambia (con debounce y a prueba de bloqueos)
             React.useEffect(() => {
                 if (!cloudUser || !firestoreDb || !isInitialCloudSyncDone.current) return;
+                if (isMergingFromCloud.current) return;
 
                 setCloudSyncStatus('syncing');
                 const timeoutId = setTimeout(async () => {
@@ -2874,12 +2882,11 @@
                         console.error("Error en autoguardado de nube:", saveErr);
                         setCloudSyncStatus('error');
                     }
-                }, 800); // 800ms debounce
+                }, 800);
 
-                // Safety timeout: si por latencia o red no responde en 4s, quitar el estado de carga
                 const safetyTimer = setTimeout(() => {
                     setCloudSyncStatus(prev => prev === 'syncing' ? 'saved' : prev);
-                }, 4000);
+                }, 3000);
 
                 return () => {
                     clearTimeout(timeoutId);
@@ -3362,17 +3369,7 @@
                 document.body.style.backgroundAttachment = 'fixed';
             }, [currentLevel]);
 
-            React.useEffect(() => {
-                if (currentTab === 'learn') {
-                    setTimeout(() => { 
-                        const activeNode = document.getElementById('active-node');
-                        if (activeNode) {
-                            activeNode.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
-                        }
-                    }, 150);
-                }
-            }, [currentTab, currentLevel]);
-
+            // Scroll automático removido: ahora solo se hace scroll si el usuario presiona los botones de Navegación Rápida
             React.useEffect(() => {
                 const handleScroll = () => { setShowScrollTop(window.scrollY > 300); };
                 window.addEventListener('scroll', handleScroll);
@@ -3470,7 +3467,7 @@
                             return (
                                 <div key={levelKey} style={{ display: currentLevel === levelKey ? 'block' : 'none' }}>
                                     {/* BARRA DE PROGRESO VISUAL POR NIVEL */}
-                                    <div className="mb-6 bg-surface p-4 rounded-2xl shadow-sm border border-gray-100">
+                                    <div className="mb-4 bg-surface p-4 rounded-2xl shadow-sm border border-gray-100">
                                         <div className="flex items-center justify-between mb-2">
                                             <div>
                                                 <h2 className="font-bold text-base text-gray-900 leading-tight">Progreso de {levelKey === 'beginner' ? 'Principiante' : levelKey === 'intermediate' ? 'Intermedio' : 'Avanzado'}</h2>
@@ -3507,6 +3504,78 @@
                                             </span>
                                         </div>
                                     </div>
+
+                                    {/* NAVEGACIÓN RÁPIDA: CLASE ACTUAL Y REPASO ACTUAL */}
+                                    {(() => {
+                                        const nextClassNum = classes.find(c => !completedInLevel.includes(c));
+                                        const nextReviewNum = classes.find(c => !reviewsInLevel.includes(c));
+                                        
+                                        const goToNode = (classId) => {
+                                            const node = document.getElementById(`node-${levelKey}-${classId}`);
+                                            if (node) {
+                                                node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                setTimeout(() => setSelectedClass(classId), 300);
+                                            } else {
+                                                setSelectedClass(classId);
+                                            }
+                                        };
+
+                                        return (
+                                            <div className="grid grid-cols-2 gap-3 mb-6">
+                                                {/* Botón Clase Actual */}
+                                                <button
+                                                    onClick={() => nextClassNum && goToNode(nextClassNum)}
+                                                    disabled={!nextClassNum}
+                                                    className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all shadow-xs active:scale-95 ${
+                                                        nextClassNum 
+                                                            ? 'bg-white hover:bg-gray-50 border-gray-200 cursor-pointer' 
+                                                            : 'bg-gray-100 border-gray-200 opacity-60 cursor-default'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center justify-between mb-1.5">
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-duotext flex items-center gap-1">
+                                                            <Icon name="Play" size={11} className={theme.text} /> Clase Actual
+                                                        </span>
+                                                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${theme.bg} text-white`}>
+                                                            {nextClassNum ? `#${nextClassNum}` : 'Completado'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="font-bold text-xs text-gray-900 truncate">
+                                                        {nextClassNum ? (courseData[levelKey]?.find(c => c.id === nextClassNum)?.title || `Clase ${nextClassNum}`) : 'Todas las clases listas'}
+                                                    </div>
+                                                    <div className={`text-[11px] font-bold ${theme.text} mt-2 flex items-center gap-1`}>
+                                                        Ir a clase <Icon name="ArrowRight" size={12} />
+                                                    </div>
+                                                </button>
+
+                                                {/* Botón Repaso Actual */}
+                                                <button
+                                                    onClick={() => nextReviewNum && goToNode(nextReviewNum)}
+                                                    disabled={!nextReviewNum}
+                                                    className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all shadow-xs active:scale-95 ${
+                                                        nextReviewNum 
+                                                            ? 'bg-white hover:bg-gray-50 border-gray-200 cursor-pointer' 
+                                                            : 'bg-gray-100 border-gray-200 opacity-60 cursor-default'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center justify-between mb-1.5">
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-duotext flex items-center gap-1">
+                                                            <Icon name="RotateCw" size={11} className="text-duogold" /> Repaso Actual
+                                                        </span>
+                                                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-duogold text-white">
+                                                            {nextReviewNum ? `#${nextReviewNum}` : 'Completado'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="font-bold text-xs text-gray-900 truncate">
+                                                        {nextReviewNum ? `Repaso ${nextReviewNum} (18m)` : 'Todos los repasos listos'}
+                                                    </div>
+                                                    <div className="text-[11px] font-bold text-duogold mt-2 flex items-center gap-1">
+                                                        Ir a repaso <Icon name="ArrowRight" size={12} />
+                                                    </div>
+                                                </button>
+                                            </div>
+                                        );
+                                    })()}
 
                                     <div className="flex flex-col items-center relative">
                                         
