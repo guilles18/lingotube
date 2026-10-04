@@ -3272,8 +3272,278 @@
                     </div>
                 );
             };
+        // --- BUSCADOR INTELIGENTE Y ULTRALIGERO ---
+        const SearchModal = ({ isOpen, onClose, courseData, notes, chunks, onSelectClass, onSelectSyllabus }) => {
+            const [inputValue, setInputValue] = React.useState('');
+            const [debouncedQuery, setDebouncedQuery] = React.useState('');
+            const [activeFilter, setActiveFilter] = React.useState('all'); // 'all' | 'classes' | 'syllabus' | 'notes'
+            const inputRef = React.useRef(null);
 
+            // Resetear y enfocar al abrir
+            React.useEffect(() => {
+                if (isOpen) {
+                    setInputValue('');
+                    setDebouncedQuery('');
+                    setActiveFilter('all');
+                    setTimeout(() => {
+                        if (inputRef.current) inputRef.current.focus();
+                    }, 50);
+                }
+            }, [isOpen]);
 
+            // Debounce ultra eficiente (120ms): no congela el teclado al tipear
+            React.useEffect(() => {
+                const timer = setTimeout(() => {
+                    setDebouncedQuery(inputValue.trim());
+                }, 120);
+                return () => clearTimeout(timer);
+            }, [inputValue]);
+
+            // Búsqueda inteligente multitoken (palabras en cualquier orden, sin tildes)
+            const results = React.useMemo(() => {
+                if (!debouncedQuery) return [];
+
+                const normalize = (str) => {
+                    if (!str) return '';
+                    return str
+                        .toString()
+                        .toLowerCase()
+                        .normalize('NFD')
+                        .replace(/[\u0300-\u036f]/g, '');
+                };
+
+                const tokens = normalize(debouncedQuery).split(/\s+/).filter(Boolean);
+                if (tokens.length === 0) return [];
+
+                const matchesAllTokens = (targetStr) => {
+                    if (!targetStr) return false;
+                    const norm = normalize(targetStr);
+                    return tokens.every(token => norm.includes(token));
+                };
+
+                const found = [];
+
+                // 1. Buscar en Temario (SYLLABUS_DATA)
+                if (activeFilter === 'all' || activeFilter === 'syllabus') {
+                    for (const level of SYLLABUS_DATA) {
+                        for (const sec of level.sections) {
+                            let matchPoint = '';
+                            let matchClass = '';
+
+                            if (sec.points) {
+                                for (const p of sec.points) {
+                                    if (matchesAllTokens(p)) {
+                                        matchPoint = p;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (sec.classes) {
+                                for (const c of sec.classes) {
+                                    const fullClassStr = `${c.title} ${c.theme || ''} ${c.examples || ''}`;
+                                    if (matchesAllTokens(fullClassStr)) {
+                                        matchClass = `Clase ${c.id}: ${c.title}`;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            const titleMatches = matchesAllTokens(sec.title);
+                            if (titleMatches || matchPoint || matchClass) {
+                                found.push({
+                                    type: 'syllabus',
+                                    badge: 'Temario',
+                                    badgeColor: 'bg-purple-100 text-purple-700 border-purple-200',
+                                    level: level.level || 'beginner',
+                                    levelTitle: level.title,
+                                    title: sec.title,
+                                    preview: matchPoint || matchClass || (sec.points ? sec.points.slice(0, 2).join(' • ') : ''),
+                                    range: sec.range
+                                });
+                            }
+                        }
+                    }
+                }
+
+                // 2. Buscar en Clases, Notas y Chunks
+                const levels = ['beginner', 'intermediate', 'advanced'];
+                for (const lvl of levels) {
+                    const lvlName = lvl === 'beginner' ? 'Principiante' : lvl === 'intermediate' ? 'Intermedio' : 'Avanzado';
+                    const classes = (courseData && courseData[lvl]) || [];
+
+                    for (const cls of classes) {
+                        if (found.length >= 35) break;
+
+                        const classKey = `${lvl}-${cls.id}`;
+                        const note = (notes && notes[classKey]) || '';
+                        const chunk = (chunks && chunks[classKey]) || '';
+                        const title = cls.title || `Clase ${cls.id}`;
+
+                        let matchType = '';
+                        let badgeColor = '';
+                        let preview = '';
+
+                        if ((activeFilter === 'all' || activeFilter === 'classes') && matchesAllTokens(title)) {
+                            matchType = 'Clase';
+                            badgeColor = 'bg-blue-100 text-duoblue border-blue-200';
+                            preview = title;
+                        } else if ((activeFilter === 'all' || activeFilter === 'notes') && note && matchesAllTokens(note)) {
+                            matchType = 'Nota';
+                            badgeColor = 'bg-amber-100 text-amber-700 border-amber-200';
+                            preview = note;
+                        } else if ((activeFilter === 'all' || activeFilter === 'notes') && chunk && matchesAllTokens(chunk)) {
+                            matchType = 'Chunk';
+                            badgeColor = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+                            preview = chunk;
+                        }
+
+                        if (matchType) {
+                            found.push({
+                                type: 'class',
+                                badge: matchType,
+                                badgeColor,
+                                level: lvl,
+                                levelName: lvlName,
+                                classId: cls.id,
+                                title: `${lvlName} • Clase ${cls.id}: ${title}`,
+                                preview: preview
+                            });
+                        }
+                    }
+                }
+
+                return found.slice(0, 25); // Máximo 25 para fluidez extrema
+            }, [debouncedQuery, activeFilter, courseData, notes, chunks]);
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] flex flex-col justify-start items-center p-3 sm:p-6 animate-fade-in">
+                    <div className="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col max-h-[85vh] overflow-hidden">
+                        {/* Cabecera del buscador */}
+                        <div className="p-3 border-b border-gray-100 flex items-center gap-2 bg-gray-50/80">
+                            <div className="flex-1 bg-white rounded-xl flex items-center px-3 py-2 border border-gray-300 focus-within:border-duoblue focus-within:ring-2 focus-within:ring-duoblue/20 transition-all shadow-2xs">
+                                <Icon name="Search" className="text-gray-400 mr-2 shrink-0" size={18} />
+                                <input 
+                                    ref={inputRef}
+                                    type="text" 
+                                    className="bg-transparent text-gray-900 w-full outline-none text-sm font-medium placeholder:text-gray-400"
+                                    placeholder="Ej: presente perfecto, condicional, irregular..." 
+                                    value={inputValue}
+                                    onChange={e => setInputValue(e.target.value)}
+                                />
+                                {inputValue && (
+                                    <button 
+                                        onClick={() => { setInputValue(''); setDebouncedQuery(''); }} 
+                                        className="text-gray-400 hover:text-gray-600 p-0.5"
+                                        title="Borrar texto"
+                                    >
+                                        <Icon name="XCircle" size={16} />
+                                    </button>
+                                )}
+                            </div>
+                            <button 
+                                onClick={onClose} 
+                                className="text-gray-600 hover:text-gray-900 font-bold px-3 py-2 text-xs rounded-lg hover:bg-gray-200/50 transition-colors"
+                            >
+                                Cerrar
+                            </button>
+                        </div>
+
+                        {/* Filtros de categoría */}
+                        {inputValue && (
+                            <div className="px-3 py-2 border-b border-gray-100 flex items-center gap-1.5 overflow-x-auto text-[11px] bg-white">
+                                <span className="text-gray-400 mr-1 font-medium">Filtrar:</span>
+                                {[
+                                    { id: 'all', label: 'Todos' },
+                                    { id: 'classes', label: 'Clases' },
+                                    { id: 'syllabus', label: 'Temario' },
+                                    { id: 'notes', label: 'Notas/Chunks' }
+                                ].map(f => (
+                                    <button
+                                        key={f.id}
+                                        onClick={() => setActiveFilter(f.id)}
+                                        className={`px-2.5 py-1 rounded-full font-bold transition-colors cursor-pointer shrink-0 ${
+                                            activeFilter === f.id 
+                                                ? 'bg-duoblue text-white' 
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        {f.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Lista de resultados */}
+                        <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-50/50">
+                            {debouncedQuery && results.length === 0 ? (
+                                <div className="text-center text-gray-500 py-10 px-4">
+                                    <Icon name="Search" size={36} className="mx-auto mb-2 text-gray-300" />
+                                    <p className="font-bold text-gray-700 text-sm">Sin coincidencias</p>
+                                    <p className="text-xs text-gray-500 mt-1">No encontramos resultados para "{debouncedQuery}". Intenta con otras palabras clave.</p>
+                                </div>
+                            ) : null}
+
+                            {debouncedQuery && results.length > 0 ? (
+                                <>
+                                    <div className="text-xs font-bold text-gray-500 px-1 flex items-center justify-between">
+                                        <span>Resultados ({results.length})</span>
+                                        <span className="text-[10px] text-gray-400 font-normal">Toca para abrir</span>
+                                    </div>
+                                    {results.map((res, idx) => (
+                                        <div 
+                                            key={idx}
+                                            onClick={() => {
+                                                onClose();
+                                                if (res.type === 'class') {
+                                                    onSelectClass(res.level, res.classId);
+                                                } else {
+                                                    onSelectSyllabus(res.level);
+                                                }
+                                            }}
+                                            className="bg-white rounded-xl p-3 border border-gray-200 hover:border-duoblue hover:shadow-xs transition-all cursor-pointer active:scale-[0.99] group"
+                                        >
+                                            <div className="flex items-center justify-between gap-2 mb-1">
+                                                <div className="flex items-center gap-1.5 font-bold text-xs text-gray-900 group-hover:text-duoblue transition-colors truncate">
+                                                    <Icon 
+                                                        name={res.type === 'class' ? "PlayCircle" : "BookOpen"} 
+                                                        size={15} 
+                                                        className={res.type === 'class' ? "text-duoblue" : "text-purple-600"} 
+                                                    />
+                                                    <span className="truncate">{res.title}</span>
+                                                </div>
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${res.badgeColor}`}>
+                                                    {res.badge}
+                                                </span>
+                                            </div>
+                                            {res.preview && (
+                                                <p className="text-xs text-gray-600 line-clamp-2 mt-1 leading-relaxed pl-5">
+                                                    {res.preview}
+                                                </p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </>
+                            ) : null}
+
+                            {!debouncedQuery && (
+                                <div className="text-center text-gray-400 py-10 px-4">
+                                    <div className="w-11 h-11 bg-blue-50 text-duoblue rounded-full flex items-center justify-center mx-auto mb-3 border border-blue-100">
+                                        <Icon name="Sparkles" size={20} />
+                                    </div>
+                                    <p className="text-sm font-bold text-gray-700">Búsqueda Inteligente</p>
+                                    <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto leading-relaxed">
+                                        Escribe palabras clave separadas (ej: <i>"presente hablar"</i>, <i>"verbo irregular"</i>). Busca en títulos, temario y tus apuntes.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
         const App = () => {
             const { 
@@ -3313,7 +3583,6 @@
             
             // Estados del buscador
             const [showSearchModal, setShowSearchModal] = React.useState(false);
-            const [searchQuery, setSearchQuery] = React.useState('');
             const [sectionModal, setSectionModal] = React.useState(null);
             
             const handleSyllabusNav = (level, classId, sectionIdx) => {
@@ -4225,152 +4494,6 @@
 
 
 
-            const renderSearchModal = () => {
-                if (!showSearchModal) return null;
-
-                const results = [];
-                const query = searchQuery.toLowerCase().trim();
-
-                if (query) {
-                    SYLLABUS_DATA.forEach(level => {
-                        level.sections.forEach(sec => {
-                            let matchContent = false;
-                            
-                            // Buscar en points si existen
-                            if (sec.points) {
-                                sec.points.forEach(p => {
-                                    if (p.toLowerCase().includes(query)) matchContent = true;
-                                });
-                            }
-
-                            // Buscar en classes si existen (NUEVO FORMATO DETALLADO)
-                            let classPreview = '';
-                            if (sec.classes) {
-                                sec.classes.forEach(c => {
-                                    if (c.title.toLowerCase().includes(query) || c.theme.toLowerCase().includes(query) || c.examples.toLowerCase().includes(query)) {
-                                        matchContent = true;
-                                        if(!classPreview) classPreview = `Clase ${c.id}: ${c.title}...`;
-                                    }
-                                });
-                            }
-                            
-                            if (sec.title.toLowerCase().includes(query) || matchContent) {
-                                const contentStr = sec.points ? sec.points.join(' ') : classPreview;
-                                results.push({ type: 'syllabus', level: level.title, title: sec.title, content: contentStr, range: sec.range });
-                            }
-                        });
-                    });
-
-                    ['beginner', 'intermediate', 'advanced'].forEach(lvl => {
-                        const lvlName = lvl === 'beginner' ? 'Principiante' : lvl === 'intermediate' ? 'Intermedio' : 'Avanzado';
-                        
-                        if (courseData[lvl]) {
-                            courseData[lvl].forEach(cls => {
-                                const classKey = `${lvl}-${cls.id}`;
-                                const note = data.notes[classKey] || '';
-                                const chunk = data.chunks[classKey] || '';
-                                const title = cls.title || '';
-
-                                let matched = false;
-                                let matchType = '';
-                                let preview = '';
-
-                                if (title.toLowerCase().includes(query)) {
-                                    matched = true;
-                                    matchType = 'Título';
-                                    preview = title;
-                                } else if (note.toLowerCase().includes(query)) {
-                                    matched = true;
-                                    matchType = 'Notas';
-                                    preview = note;
-                                } else if (chunk.toLowerCase().includes(query)) {
-                                    matched = true;
-                                    matchType = 'Chunks';
-                                    preview = chunk;
-                                }
-
-                                if (matched) {
-                                    results.push({ type: 'class', level: lvl, levelName: lvlName, classId: cls.id, matchType, preview });
-                                }
-                            });
-                        }
-                    });
-                }
-
-                return (
-                    <div className="fixed inset-0 bg-darker/95 backdrop-blur-xl z-[80] flex flex-col animate-fade-in pt-safe pb-safe">
-                        <div className="p-4 border-b border-white/10 flex items-center gap-3">
-                            <div className="flex-1 bg-surface rounded-2xl flex items-center px-4 py-3 border border-duogray/50 focus-within:border-duoblue transition-colors">
-                                <Icon name="Search" className="text-duotext mr-2" size={20} />
-                                <input 
-                                    autoFocus
-                                    type="text" 
-                                    className="bg-transparent text-white w-full outline-none text-[16px] placeholder:text-duotext"
-                                    placeholder="Buscar en clases, notas o temario..." 
-                                    value={searchQuery}
-                                    onChange={e => setSearchQuery(e.target.value)}
-                                />
-                                {searchQuery && (
-                                    <button onClick={() => setSearchQuery('')} className="text-duotext hover:text-white">
-                                        <Icon name="XCircle" size={20} />
-                                    </button>
-                                )}
-                            </div>
-                            <button onClick={() => { setShowSearchModal(false); setSearchQuery(''); }} className="text-duotext font-bold p-2 hover:text-white transition-colors">
-                                Cancelar
-                            </button>
-                        </div>
-                        
-                        <div className="flex-1 overflow-y-auto p-4">
-                            {query && results.length === 0 ? (
-                                <div className="text-center text-duotext mt-10">
-                                    <Icon name="Search" size={48} className="mx-auto mb-4 opacity-50" />
-                                    <p>No se encontraron resultados para "{query}"</p>
-                                </div>
-                            ) : null}
-
-                            {query && results.length > 0 ? (
-                                <div className="space-y-3 pb-20">
-                                    <h3 className="text-sm font-bold text-duotext mb-4 ml-1">Resultados ({results.length})</h3>
-                                    {results.map((res, idx) => {
-                                        if (res.type === 'syllabus') {
-                                            return (
-                                                <div key={`syl-${idx}`} onClick={() => { setShowSearchModal(false); setCurrentTab('syllabus'); }} className="bg-surface rounded-2xl p-4 border border-purple-500/30 cursor-pointer active:scale-95 transition-transform">
-                                                    <div className="flex items-center gap-2 text-purple-400 text-xs font-bold mb-1">
-                                                        <Icon name="Map" size={14} /> Temario: {res.level} (Clases {res.range})
-                                                    </div>
-                                                    <h4 className="text-white font-bold mb-1">{res.title}</h4>
-                                                    <p className="text-sm text-duotext line-clamp-2">{res.content}</p>
-                                                </div>
-                                            );
-                                        } else {
-                                            return (
-                                                <div key={`cls-${res.level}-${res.classId}`} onClick={() => { setShowSearchModal(false); setCurrentTab('learn'); setCurrentLevel(res.level); setSelectedClass(res.classId); }} className="bg-surface rounded-2xl p-4 border border-duoblue/30 cursor-pointer active:scale-95 transition-transform">
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <div className="flex items-center gap-2 text-duoblue text-xs font-bold">
-                                                            <Icon name="PlayCircle" size={14} /> {res.levelName} - Clase {res.classId}
-                                                        </div>
-                                                        <span className="text-[10px] bg-dark px-2 py-0.5 rounded-full text-duotext border border-duogray">{res.matchType}</span>
-                                                    </div>
-                                                    <p className="text-sm text-white line-clamp-2 mt-2">{res.preview}</p>
-                                                </div>
-                                            );
-                                        }
-                                    })}
-                                </div>
-                            ) : null}
-                            
-                            {!query && (
-                                <div className="text-center text-duotext mt-20 opacity-50">
-                                    <Icon name="Search" size={64} className="mx-auto mb-4" />
-                                    <p>Escribe algo para buscar en todo tu contenido.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                );
-            };
-
             return (
                 <div className="min-h-screen relative font-sans overflow-x-clip">
                     {renderHeader()}
@@ -4391,7 +4514,23 @@
                     {renderModal()}
                     {renderFullScreenNote()}
                     {renderFullScreenEditor()}
-                    {renderSearchModal()}
+                    <SearchModal
+                        isOpen={showSearchModal}
+                        onClose={() => setShowSearchModal(false)}
+                        courseData={courseData}
+                        notes={data.notes}
+                        chunks={data.chunks}
+                        onSelectClass={(lvl, classId) => {
+                            setMountedLevels(prev => ({ ...prev, [lvl]: true }));
+                            setCurrentLevel(lvl);
+                            setCurrentTab('learn');
+                            setSelectedClass(classId);
+                        }}
+                        onSelectSyllabus={(lvl) => {
+                            if (lvl) setCurrentLevel(lvl);
+                            setCurrentTab('syllabus');
+                        }}
+                    />
                 </div>
             );
         };
