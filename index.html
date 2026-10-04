@@ -2708,6 +2708,200 @@
             return plans[type];
         };
 
+        // --- GESTIÓN DE COPIAS DE SEGURIDAD AUTOMÁTICAS (IndexedDB & File System Access API) ---
+        const BACKUP_IDB_NAME = 'LingoTubeBackupDB';
+        const BACKUP_IDB_STORE = 'handles';
+
+        const openBackupDB = () => {
+            return new Promise((resolve, reject) => {
+                if (!window.indexedDB) {
+                    reject(new Error("IndexedDB no soportado en este navegador"));
+                    return;
+                }
+                const req = indexedDB.open(BACKUP_IDB_NAME, 1);
+                req.onupgradeneeded = () => {
+                    req.result.createObjectStore(BACKUP_IDB_STORE);
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        };
+
+        const saveDirHandleToIDB = async (handle) => {
+            try {
+                const db = await openBackupDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(BACKUP_IDB_STORE, 'readwrite');
+                    tx.objectStore(BACKUP_IDB_STORE).put(handle, 'backupDirectory');
+                    tx.oncomplete = () => resolve(true);
+                    tx.onerror = () => reject(tx.error);
+                });
+            } catch (e) {
+                console.error("Error guardando directorio en IndexedDB:", e);
+                return false;
+            }
+        };
+
+        const getDirHandleFromIDB = async () => {
+            try {
+                const db = await openBackupDB();
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(BACKUP_IDB_STORE, 'readonly');
+                    const req = tx.objectStore(BACKUP_IDB_STORE).get('backupDirectory');
+                    req.onsuccess = () => resolve(req.result || null);
+                    req.onerror = () => reject(req.error);
+                });
+            } catch (e) {
+                console.warn("No se pudo obtener directorio de IndexedDB:", e);
+                return null;
+            }
+        };
+
+        const verifyDirectoryPermission = async (dirHandle, requestIfPrompt = false) => {
+            if (!dirHandle) return false;
+            const options = { mode: 'readwrite' };
+            try {
+                const status = await dirHandle.queryPermission(options);
+                if (status === 'granted') return true;
+                if (requestIfPrompt) {
+                    const reqStatus = await dirHandle.requestPermission(options);
+                    return reqStatus === 'granted';
+                }
+            } catch (e) {
+                console.warn("Error comprobando permisos de carpeta:", e);
+            }
+            return false;
+        };
+
+        const generateBackupPayload = (currentData, currentCourse = null) => {
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            const dia = pad(now.getDate());
+            const mes = pad(now.getMonth() + 1);
+            const anio = now.getFullYear();
+            const horas = pad(now.getHours());
+            const minutos = pad(now.getMinutes());
+            const segundos = pad(now.getSeconds());
+            const fechaFormateada = `${dia}/${mes}/${anio} a las ${horas}:${minutos}:${segundos}`;
+
+            const totalCompleted = 
+                (currentData?.completed?.beginner?.length || 0) + 
+                (currentData?.completed?.intermediate?.length || 0) + 
+                (currentData?.completed?.advanced?.length || 0);
+
+            const totalReviews = 
+                (currentData?.reviews?.beginner?.length || 0) + 
+                (currentData?.reviews?.intermediate?.length || 0) + 
+                (currentData?.reviews?.advanced?.length || 0);
+
+            const totalBookmarks = 
+                (currentData?.bookmarks?.beginner?.length || 0) + 
+                (currentData?.bookmarks?.intermediate?.length || 0) + 
+                (currentData?.bookmarks?.advanced?.length || 0);
+
+            const totalNotes = Object.keys(currentData?.notes || {}).length;
+            const totalChunks = Object.keys(currentData?.chunks || {}).length;
+
+            const backupInfo = {
+                app: "LingoTube",
+                version: "2.0",
+                timestamp: now.getTime(),
+                isoDate: now.toISOString(),
+                fechaFormateada: fechaFormateada,
+                esUltimaCopia: true,
+                resumen: {
+                    totalClasesCompletadas: totalCompleted,
+                    totalRepasos: totalReviews,
+                    totalFavoritos: totalBookmarks,
+                    totalNotas: totalNotes,
+                    totalChunks: totalChunks
+                }
+            };
+
+            const payload = {
+                _backupInfo: backupInfo,
+                ...currentData
+            };
+
+            if (currentCourse) {
+                payload._courseData = currentCourse;
+            }
+
+            return payload;
+        };
+
+        const writeBackupFilesToDirectory = async (dirHandle, payload) => {
+            const jsonString = JSON.stringify(payload, null, 2);
+            const now = new Date(payload._backupInfo.timestamp);
+            const pad = (n) => String(n).padStart(2, '0');
+            const dateStamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+            const timeStamp = `${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+
+            // 1. Archivo siempre identificado como la ÚLTIMA copia (fácil de reconocer en Windows)
+            const latestFileHandle = await dirHandle.getFileHandle('LingoTube_Respaldo_ULTIMA.json', { create: true });
+            const latestWritable = await latestFileHandle.createWritable();
+            await latestWritable.write(jsonString);
+            await latestWritable.close();
+
+            // 2. Archivo fechado para historial (por fecha YYYY-MM-DD para no saturar con miles de archivos)
+            const historyFileName = `LingoTube_Respaldo_${dateStamp}.json`;
+            const historyFileHandle = await dirHandle.getFileHandle(historyFileName, { create: true });
+            const historyWritable = await historyFileHandle.createWritable();
+            await historyWritable.write(jsonString);
+            await historyWritable.close();
+
+            // 3. Archivo de texto legible para el usuario en Windows
+            const infoText = 
+`======================================================================
+           LINGOTUBE - DATOS DE LA ÚLTIMA COPIA DE SEGURIDAD
+======================================================================
+Fecha y hora de esta copia: ${payload._backupInfo.fechaFormateada}
+Archivo principal (ÚLTIMA): LingoTube_Respaldo_ULTIMA.json
+Archivo de este punto:     ${historyFileName}
+
+RESUMEN DEL PROGRESO GUARDADO:
+- Total Clases Completadas: ${payload._backupInfo.resumen.totalClasesCompletadas}
+- Total Repasos Realizados: ${payload._backupInfo.resumen.totalRepasos}
+- Notas de Vocabulario:     ${payload._backupInfo.resumen.totalNotas}
+- Chunks / Frases Clave:    ${payload._backupInfo.resumen.totalChunks}
+
+Nota: Puedes restaurar este progreso en cualquier momento desde LingoTube
+usando el botón "Importar" y seleccionando LingoTube_Respaldo_ULTIMA.json.
+(La app mantiene la carpeta limpia guardando solo la última copia y hasta
+3 respaldos históricos recientes).
+======================================================================`;
+
+            const txtFileHandle = await dirHandle.getFileHandle('LingoTube_Ultima_Copia_Info.txt', { create: true });
+            const txtWritable = await txtFileHandle.createWritable();
+            await txtWritable.write(infoText);
+            await txtWritable.close();
+
+            // 4. Limpieza automática: mantener como máximo 3 copias históricas para evitar saturación
+            try {
+                const historyFiles = [];
+                for await (const entry of dirHandle.values()) {
+                    if (entry.kind === 'file' && entry.name.startsWith('LingoTube_Respaldo_') && entry.name.endsWith('.json') && entry.name !== 'LingoTube_Respaldo_ULTIMA.json') {
+                        historyFiles.push(entry.name);
+                    }
+                }
+                historyFiles.sort().reverse();
+                if (historyFiles.length > 3) {
+                    const toDelete = historyFiles.slice(3);
+                    for (const oldFileName of toDelete) {
+                        try {
+                            await dirHandle.removeEntry(oldFileName);
+                        } catch (delErr) {
+                            console.warn("No se pudo eliminar copia vieja:", oldFileName, delErr);
+                        }
+                    }
+                }
+            } catch (cleanupErr) {
+                console.warn("Error en limpieza de archivos antiguos:", cleanupErr);
+            }
+
+            return { historyFileName, fechaTexto: payload._backupInfo.fechaFormateada };
+        };
+
         // --- ESTADO GLOBAL (Custom Hook) ---
         function useAppStore() {
             const [data, setData] = React.useState(() => {
@@ -2750,6 +2944,230 @@
             });
 
             React.useEffect(() => { localStorage.setItem('lingoTubeCourseData_v6', JSON.stringify(courseData)); }, [courseData]);
+
+            // --- CONFIGURACIÓN DE COPIA DE SEGURIDAD AUTOMÁTICA ---
+            const [autoBackupConfig, setAutoBackupConfig] = React.useState(() => {
+                let savedInterval = parseInt(localStorage.getItem('lingoTubeAutoBackup_interval') || '10080', 10);
+                if (!savedInterval || savedInterval < 1440) {
+                    savedInterval = 10080; // 1 semana por defecto
+                    localStorage.setItem('lingoTubeAutoBackup_interval', '10080');
+                }
+                return {
+                    enabled: localStorage.getItem('lingoTubeAutoBackup_enabled') === 'true',
+                    intervalMinutes: savedInterval,
+                    folderName: localStorage.getItem('lingoTubeAutoBackup_folderName') || '',
+                    lastBackupDate: localStorage.getItem('lingoTubeAutoBackup_lastDate') || '',
+                    lastBackupTimestamp: parseInt(localStorage.getItem('lingoTubeAutoBackup_lastTime') || '0', 10),
+                    needPermission: false,
+                    statusMessage: '',
+                    isSaving: false
+                };
+            });
+
+            // Ejecutar guardado en carpeta física usando el Handle
+            const executeBackupToHandle = async (handle, dataToSave = null) => {
+                if (!handle) return false;
+                setAutoBackupConfig(prev => ({ ...prev, isSaving: true, statusMessage: 'Guardando copia de seguridad...' }));
+                try {
+                    const currentData = dataToSave || (localStorage.getItem('lingoTubeData') ? JSON.parse(localStorage.getItem('lingoTubeData')) : data);
+                    const currentCourse = localStorage.getItem('lingoTubeCourseData_v6') ? JSON.parse(localStorage.getItem('lingoTubeCourseData_v6')) : courseData;
+                    const payload = generateBackupPayload(currentData, currentCourse);
+                    const result = await writeBackupFilesToDirectory(handle, payload);
+
+                    const now = Date.now();
+                    localStorage.setItem('lingoTubeAutoBackup_lastDate', result.fechaTexto);
+                    localStorage.setItem('lingoTubeAutoBackup_lastTime', String(now));
+
+                    setAutoBackupConfig(prev => ({
+                        ...prev,
+                        lastBackupDate: result.fechaTexto,
+                        lastBackupTimestamp: now,
+                        isSaving: false,
+                        needPermission: false,
+                        statusMessage: `Última copia guardada: ${result.fechaTexto}`
+                    }));
+                    return true;
+                } catch (err) {
+                    console.error("Error al guardar copia de seguridad:", err);
+                    const isPermError = err.name === 'NotAllowedError';
+                    setAutoBackupConfig(prev => ({
+                        ...prev,
+                        isSaving: false,
+                        needPermission: isPermError,
+                        statusMessage: isPermError ? 'Se requiere permiso de escritura en la carpeta.' : `Error: ${err.message}`
+                    }));
+                    return false;
+                }
+            };
+
+            // Activar copia automática: solicita carpeta y empieza de inmediato
+            const enableAutoBackup = async () => {
+                if (typeof window === 'undefined' || !('showDirectoryPicker' in window)) {
+                    alert("Tu navegador no soporta la selección de carpetas del sistema (File System Access API). Te sugerimos abrir la app en Google Chrome o Microsoft Edge en tu computadora.");
+                    return;
+                }
+                try {
+                    const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                    if (!dirHandle) return;
+
+                    await saveDirHandleToIDB(dirHandle);
+                    localStorage.setItem('lingoTubeAutoBackup_enabled', 'true');
+                    localStorage.setItem('lingoTubeAutoBackup_folderName', dirHandle.name);
+
+                    setAutoBackupConfig(prev => ({
+                        ...prev,
+                        enabled: true,
+                        folderName: dirHandle.name,
+                        needPermission: false,
+                        statusMessage: 'Iniciando primera copia...'
+                    }));
+
+                    // Inicia inmediatamente ("si la activo la opcion pongo la carpeta y empieza")
+                    const ok = await executeBackupToHandle(dirHandle);
+                    if (ok) {
+                        alert(`¡Copia de seguridad automática activada con éxito!\nCarpeta elegida: "${dirHandle.name}"\nSe guardó la primera copia con los datos más recientes.`);
+                    }
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        console.error("Error activando copia automática:", err);
+                        alert("No se pudo configurar la carpeta: " + err.message);
+                    }
+                }
+            };
+
+            // Desactivar copia automática
+            const disableAutoBackup = () => {
+                localStorage.setItem('lingoTubeAutoBackup_enabled', 'false');
+                setAutoBackupConfig(prev => ({
+                    ...prev,
+                    enabled: false,
+                    statusMessage: 'Copia automática desactivada.'
+                }));
+            };
+
+            // Cambiar la carpeta elegida
+            const changeBackupFolder = async () => {
+                if (typeof window === 'undefined' || !('showDirectoryPicker' in window)) {
+                    alert("Tu navegador no soporta la selección de carpetas locales.");
+                    return;
+                }
+                try {
+                    const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                    if (!dirHandle) return;
+
+                    await saveDirHandleToIDB(dirHandle);
+                    localStorage.setItem('lingoTubeAutoBackup_folderName', dirHandle.name);
+
+                    setAutoBackupConfig(prev => ({
+                        ...prev,
+                        folderName: dirHandle.name,
+                        needPermission: false
+                    }));
+
+                    const ok = await executeBackupToHandle(dirHandle);
+                    if (ok) {
+                        alert(`¡Carpeta actualizada a "${dirHandle.name}"!\nSe ha guardado una nueva copia de seguridad.`);
+                    }
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        alert("Error al cambiar carpeta: " + err.message);
+                    }
+                }
+            };
+
+            // Re-autorizar permiso en la carpeta existente (por ejemplo tras recargar)
+            const requestFolderPermission = async () => {
+                try {
+                    const handle = await getDirHandleFromIDB();
+                    if (!handle) {
+                        enableAutoBackup();
+                        return;
+                    }
+                    const granted = await verifyDirectoryPermission(handle, true);
+                    if (granted) {
+                        setAutoBackupConfig(prev => ({ ...prev, needPermission: false }));
+                        await executeBackupToHandle(handle);
+                    } else {
+                        alert("No se otorgaron los permisos para escribir en la carpeta seleccionada.");
+                    }
+                } catch (err) {
+                    alert("Error al solicitar permisos: " + err.message);
+                }
+            };
+
+            // Guardar copia manual en la carpeta inmediatamente
+            const performManualBackup = async () => {
+                const handle = await getDirHandleFromIDB();
+                if (!handle) {
+                    await enableAutoBackup();
+                    return;
+                }
+                const hasPerm = await verifyDirectoryPermission(handle, true);
+                if (!hasPerm) {
+                    setAutoBackupConfig(prev => ({ ...prev, needPermission: true }));
+                    alert("Se necesita autorización para escribir en la carpeta. Haz clic en 'Autorizar'.");
+                    return;
+                }
+                const ok = await executeBackupToHandle(handle);
+                if (ok) {
+                    alert("¡Copia de seguridad guardada con éxito en la carpeta!");
+                }
+            };
+
+            // Cambiar intervalo de tiempo en minutos
+            const changeInterval = (minutes) => {
+                const mins = Number(minutes) || 10080;
+                localStorage.setItem('lingoTubeAutoBackup_interval', String(mins));
+                setAutoBackupConfig(prev => ({ ...prev, intervalMinutes: mins }));
+            };
+
+            // Verificación al cargar la app
+            React.useEffect(() => {
+                const checkInitialBackup = async () => {
+                    if (autoBackupConfig.enabled) {
+                        const handle = await getDirHandleFromIDB();
+                        if (handle) {
+                            const hasPerm = await verifyDirectoryPermission(handle, false);
+                            if (!hasPerm) {
+                                setAutoBackupConfig(prev => ({ ...prev, needPermission: true }));
+                            } else {
+                                const now = Date.now();
+                                const intervalMs = (autoBackupConfig.intervalMinutes || 10080) * 60 * 1000;
+                                const elapsed = now - (autoBackupConfig.lastBackupTimestamp || 0);
+                                if (elapsed >= intervalMs) {
+                                    executeBackupToHandle(handle);
+                                }
+                            }
+                        }
+                    }
+                };
+                checkInitialBackup();
+            }, []);
+
+            // Temporizador periódico automático en segundo plano
+            React.useEffect(() => {
+                if (!autoBackupConfig.enabled) return;
+
+                const timer = setInterval(async () => {
+                    const now = Date.now();
+                    const intervalMs = (autoBackupConfig.intervalMinutes || 10080) * 60 * 1000;
+                    const elapsed = now - (autoBackupConfig.lastBackupTimestamp || 0);
+
+                    if (elapsed >= intervalMs) {
+                        const handle = await getDirHandleFromIDB();
+                        if (handle) {
+                            const hasPerm = await verifyDirectoryPermission(handle, false);
+                            if (hasPerm) {
+                                await executeBackupToHandle(handle);
+                            } else {
+                                setAutoBackupConfig(prev => ({ ...prev, needPermission: true }));
+                            }
+                        }
+                    }
+                }, 30000); // Revisa periódicamente cada 30 segundos
+
+                return () => clearInterval(timer);
+            }, [autoBackupConfig.enabled, autoBackupConfig.intervalMinutes, autoBackupConfig.lastBackupTimestamp, data]);
 
             const updateCourseData = (levelKey, levelData) => setCourseData(prev => ({ ...prev, [levelKey]: levelData }));
 
@@ -2823,13 +3241,30 @@
 
             const exportData = () => {
                 const dataStr = localStorage.getItem('lingoTubeData');
-                const blob = new Blob([dataStr], { type: "application/json" });
+                const currentData = dataStr ? JSON.parse(dataStr) : data;
+                const currentCourse = localStorage.getItem('lingoTubeCourseData_v6') ? JSON.parse(localStorage.getItem('lingoTubeCourseData_v6')) : courseData;
+                const payload = generateBackupPayload(currentData, currentCourse);
+                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `LingoTube_Respaldo_${new Date().toISOString().split('T')[0]}.json`;
+                const now = new Date();
+                const pad = (n) => String(n).padStart(2, '0');
+                const dateStamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+                const timeStamp = `${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+                a.download = `LingoTube_Respaldo_${dateStamp}_${timeStamp}.json`;
                 a.click();
                 URL.revokeObjectURL(url);
+
+                const fechaTexto = payload._backupInfo.fechaFormateada;
+                localStorage.setItem('lingoTubeAutoBackup_lastDate', fechaTexto);
+                localStorage.setItem('lingoTubeAutoBackup_lastTime', String(now.getTime()));
+                setAutoBackupConfig(prev => ({
+                    ...prev,
+                    lastBackupDate: fechaTexto,
+                    lastBackupTimestamp: now.getTime(),
+                    statusMessage: `Exportación completada: ${fechaTexto}`
+                }));
             };
 
             const importData = (e) => {
@@ -2839,14 +3274,42 @@
                 reader.onload = (event) => {
                     try {
                         const importedData = JSON.parse(event.target.result);
-                        if (importedData && typeof importedData === 'object' && importedData.completed) {
-                            localStorage.setItem('lingoTubeData', JSON.stringify(importedData));
+                        let targetData = null;
+                        let backupInfo = null;
+
+                        if (importedData && typeof importedData === 'object') {
+                            if (importedData.completed) {
+                                targetData = importedData;
+                                backupInfo = importedData._backupInfo;
+                            } else if (importedData.data && importedData.data.completed) {
+                                targetData = importedData.data;
+                                backupInfo = importedData.backupInfo || importedData._backupInfo;
+                            }
+                        }
+
+                        if (targetData && typeof targetData === 'object' && targetData.completed) {
+                            const cleanData = { ...targetData };
+                            delete cleanData._backupInfo;
+                            delete cleanData._courseData;
+
+                            localStorage.setItem('lingoTubeData', JSON.stringify(cleanData));
+
+                            // Restaurar datos de cursos si vienen en la copia
+                            if (importedData._courseData) {
+                                localStorage.setItem('lingoTubeCourseData_v6', JSON.stringify(importedData._courseData));
+                            }
+
+                            let msg = "¡Copia de seguridad restaurada con éxito!";
+                            if (backupInfo && (backupInfo.fechaFormateada || backupInfo.backupDateFormatted || backupInfo.formattedDate)) {
+                                msg += `\nFecha de la copia: ${backupInfo.fechaFormateada || backupInfo.backupDateFormatted || backupInfo.formattedDate}`;
+                            }
+                            alert(msg);
                             window.location.reload(); 
                         } else {
                             alert("El archivo no parece ser un respaldo válido de LingoTube.");
                         }
                     } catch (err) {
-                        alert("Error al leer el archivo JSON.");
+                        alert("Error al leer el archivo JSON: " + err.message);
                     }
                 };
                 reader.readAsText(file);
@@ -2874,7 +3337,27 @@
                 else alert("No se encontraron los archivos .csv. Asegúrate de que estén subidos a GitHub.");
             };
 
-            return { data, toggleProgress, toggleBookmark, toggleReviewedBookmark, toggleRoutinePhase, saveNote, saveChunk, courseData, updateCourseData, exportData, importData, syncFromServer };
+            return {
+                data,
+                toggleProgress,
+                toggleBookmark,
+                toggleReviewedBookmark,
+                toggleRoutinePhase,
+                saveNote,
+                saveChunk,
+                courseData,
+                updateCourseData,
+                exportData,
+                importData,
+                syncFromServer,
+                autoBackupConfig,
+                enableAutoBackup,
+                disableAutoBackup,
+                changeBackupFolder,
+                requestFolderPermission,
+                performManualBackup,
+                changeInterval
+            };
         }
 
         const getOffset = (index) => {
@@ -3061,7 +3544,45 @@
 
 
         const App = () => {
-            const { data, toggleProgress, toggleBookmark, toggleReviewedBookmark, toggleRoutinePhase, saveNote, saveChunk, courseData, updateCourseData, exportData, importData, syncFromServer } = useAppStore();
+            const {
+                data,
+                toggleProgress,
+                toggleBookmark,
+                toggleReviewedBookmark,
+                toggleRoutinePhase,
+                saveNote,
+                saveChunk,
+                courseData,
+                updateCourseData,
+                exportData,
+                importData,
+                syncFromServer,
+                autoBackupConfig,
+                enableAutoBackup,
+                disableAutoBackup,
+                changeBackupFolder,
+                requestFolderPermission,
+                performManualBackup,
+                changeInterval
+            } = useAppStore();
+
+            const handleFileUpload = (key, file) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const parsed = parseCSVText(e.target.result);
+                        if (parsed && parsed.length > 0) {
+                            updateCourseData(key, parsed);
+                            alert(`¡Archivo CSV cargado correctamente (${parsed.length} clases)!`);
+                        } else {
+                            alert("El archivo CSV no contiene registros válidos.");
+                        }
+                    } catch (err) {
+                        alert("Error al procesar el archivo CSV: " + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
             const [currentTab, setCurrentTab] = React.useState('learn');
             const [collapsedLevels, setCollapsedLevels] = React.useState({ beginner: false, intermediate: false, advanced: false });
             const [currentLevel, setCurrentLevel] = React.useState(() => {
@@ -3527,20 +4048,202 @@
                     <h1 className="text-2xl font-bold text-gray-900 mb-6">Configuración y Perfil</h1>
                     
                     {/* BACKUP & RESTORE SECTION */}
-                    <div className="bg-white rounded-2xl p-5 mb-6 border border-gray-200 shadow-sm">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="bg-duogreen/20 p-2 rounded-xl text-duogreen"><Icon name="Save" size={24} /></div>
-                            <h2 className="font-bold text-lg text-gray-900">Copia de Seguridad</h2>
+                    <div className="bg-white rounded-2xl p-5 mb-6 border border-gray-200 shadow-sm space-y-5">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-duogreen/20 p-2.5 rounded-2xl text-duogreen shadow-xs">
+                                <Icon name="Save" size={24} />
+                            </div>
+                            <div>
+                                <h2 className="font-bold text-lg text-gray-900 leading-tight">Copia de Seguridad</h2>
+                                <p className="text-xs text-duotext">Guarda tu progreso para no perder tus avances</p>
+                            </div>
                         </div>
-                        <p className="text-sm text-duotext mb-4">Guarda tu progreso en un archivo para no perderlo o para usarlo en otro dispositivo.</p>
-                        <div className="flex gap-3">
-                            <button onClick={exportData} className="flex-1 bg-duogray hover:bg-duogray/80 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-md">
-                                <Icon name="Download" size={18} /> Exportar
-                            </button>
-                            <label className="flex-1 bg-duoblue hover:bg-duoblueDark text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md">
-                                <Icon name="Upload" size={18} /> Importar
-                                <input type="file" accept=".json" className="hidden" onChange={importData} />
-                            </label>
+
+                        {/* SECCIÓN COPIA AUTOMÁTICA */}
+                        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 transition-all">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-bold text-gray-900 text-sm">Copia automática en carpeta</span>
+                                        {autoBackupConfig.enabled && (
+                                            <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Activa
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-duotext mt-0.5">
+                                        Guarda periódicamente en la carpeta de tu computadora que elijas.
+                                    </p>
+                                </div>
+                                
+                                {/* Toggle switch */}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (autoBackupConfig.enabled) {
+                                            disableAutoBackup();
+                                        } else {
+                                            enableAutoBackup();
+                                        }
+                                    }}
+                                    className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${autoBackupConfig.enabled ? 'bg-duogreen' : 'bg-gray-300'}`}
+                                    role="switch"
+                                    aria-checked={autoBackupConfig.enabled}
+                                    title={autoBackupConfig.enabled ? "Desactivar copia automática" : "Activar copia automática"}
+                                >
+                                    <span
+                                        className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${autoBackupConfig.enabled ? 'translate-x-5' : 'translate-x-0'}`}
+                                    />
+                                </button>
+                            </div>
+
+                            {/* Panel cuando la opción está desactivada */}
+                            {!autoBackupConfig.enabled && (
+                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                    <p className="text-xs text-gray-600 mb-3 leading-relaxed">
+                                        Al activarla, eliges la carpeta en tu equipo y LingoTube empezará a guardar automáticamente tu progreso, identificando siempre la última copia realizada.
+                                    </p>
+                                    <button
+                                        onClick={enableAutoBackup}
+                                        className="w-full bg-duogreen hover:bg-duogreenDark text-white text-sm font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm cursor-pointer"
+                                    >
+                                        <Icon name="Folder" size={16} /> Elegir carpeta y activar
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Panel cuando la opción está activada */}
+                            {autoBackupConfig.enabled && (
+                                <div className="mt-4 pt-3 border-t border-gray-200 space-y-3">
+                                    {/* Carpeta seleccionada */}
+                                    <div className="bg-white p-3 rounded-xl border border-gray-200 flex items-center justify-between gap-2 shadow-xs">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <div className="text-duoblue shrink-0 bg-duoblue/10 p-1.5 rounded-lg">
+                                                <Icon name="Folder" size={18} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Carpeta conectada</div>
+                                                <div className="text-xs font-bold text-gray-900 truncate" title={autoBackupConfig.folderName}>
+                                                    {autoBackupConfig.folderName || 'Carpeta del sistema'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={changeBackupFolder}
+                                            className="shrink-0 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-3 py-1.5 rounded-lg transition-colors border border-gray-200 cursor-pointer"
+                                        >
+                                            Cambiar
+                                        </button>
+                                    </div>
+
+                                    {/* Selector de intervalo */}
+                                    <div className="bg-white p-3 rounded-xl border border-gray-200 flex items-center justify-between gap-2 shadow-xs">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="text-purple-600 shrink-0 bg-purple-100 p-1.5 rounded-lg">
+                                                <Icon name="Clock" size={18} />
+                                            </div>
+                                            <div>
+                                                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Frecuencia</div>
+                                                <div className="text-xs font-medium text-gray-700">Guardar cada:</div>
+                                            </div>
+                                        </div>
+                                        <select
+                                            value={autoBackupConfig.intervalMinutes}
+                                            onChange={(e) => changeInterval(Number(e.target.value))}
+                                            className="text-xs font-bold bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-duogreen cursor-pointer"
+                                        >
+                                            <option value={10080}>Cada semana (7 días) - Recomendado</option>
+                                            <option value={20160}>Cada 2 semanas (14 días)</option>
+                                            <option value={43200}>Cada mes (30 días)</option>
+                                            <option value={1440}>Cada 24 horas (Diario)</option>
+                                            <option value={4320}>Cada 3 días</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Re-autorización en Chromium si fuera necesaria */}
+                                    {autoBackupConfig.needPermission && (
+                                        <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 text-amber-800 text-xs font-medium">
+                                                <Icon name="AlertCircle" size={18} className="text-amber-600 shrink-0" />
+                                                <span>El navegador requiere permiso para escribir en la carpeta.</span>
+                                            </div>
+                                            <button
+                                                onClick={requestFolderPermission}
+                                                className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors shadow-sm cursor-pointer"
+                                            >
+                                                Autorizar
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Bloque con datos de la última copia de seguridad */}
+                                    <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-xs">
+                                                <Icon name="CheckCircle" size={16} className="text-emerald-600" />
+                                                <span>Datos de la última copia:</span>
+                                            </div>
+                                            <span className="text-[10px] uppercase font-mono font-bold bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-md">
+                                                Última copia
+                                            </span>
+                                        </div>
+                                        
+                                        <div className="text-xs text-gray-700 space-y-1.5 pl-5">
+                                            <div className="flex items-baseline gap-1">
+                                                <span className="text-gray-500 font-medium">Fecha y hora:</span>
+                                                <span className="font-bold text-gray-900 font-mono">
+                                                    {autoBackupConfig.lastBackupDate || 'Realizando primera copia...'}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-baseline gap-1 flex-wrap">
+                                                <span className="text-gray-500 font-medium">Archivo principal:</span>
+                                                <span className="font-mono text-[11px] font-bold text-emerald-900 bg-white px-1.5 py-0.5 rounded border border-emerald-200">
+                                                    LingoTube_Respaldo_ULTIMA.json
+                                                </span>
+                                            </div>
+                                            <p className="text-[11px] text-gray-500 pt-1 leading-tight">
+                                                💡 En tu carpeta se conserva siempre <strong className="text-gray-700">LingoTube_Respaldo_ULTIMA.json</strong> y un máximo de 3 respaldos históricos recientes para que no se acumulen demasiados archivos.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Botón para forzar copia en este momento */}
+                                    <button
+                                        onClick={performManualBackup}
+                                        disabled={autoBackupConfig.isSaving}
+                                        className="w-full bg-white hover:bg-gray-50 text-gray-800 text-xs font-bold py-2.5 px-4 rounded-xl border border-gray-300 flex items-center justify-center gap-2 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
+                                    >
+                                        <Icon name="RefreshCw" size={14} className={autoBackupConfig.isSaving ? "animate-spin text-duogreen" : "text-duogreen"} />
+                                        {autoBackupConfig.isSaving ? 'Guardando copia...' : 'Guardar copia ahora en la carpeta'}
+                                    </button>
+
+                                    {/* Feedback de estado */}
+                                    {autoBackupConfig.statusMessage && (
+                                        <div className="text-center text-[11px] font-medium text-emerald-700 animate-fade-in">
+                                            {autoBackupConfig.statusMessage}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* COPIA MANUAL (EXPORTAR / IMPORTAR) */}
+                        <div className="pt-2 border-t border-gray-100">
+                            <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">
+                                Respaldo manual tradicional
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={exportData}
+                                    className="flex-1 bg-duogray hover:bg-duogray/80 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-md text-xs sm:text-sm cursor-pointer"
+                                >
+                                    <Icon name="Download" size={16} /> Exportar
+                                </button>
+                                <label className="flex-1 bg-duoblue hover:bg-duoblueDark text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-md text-xs sm:text-sm">
+                                    <Icon name="Upload" size={16} /> Importar
+                                    <input type="file" accept=".json" className="hidden" onChange={importData} />
+                                </label>
+                            </div>
                         </div>
                     </div>
 
