@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lingotube-v5';
+const CACHE_NAME = 'lingotube-v6';
 const ASSETS = [
   './',
   './index.html',

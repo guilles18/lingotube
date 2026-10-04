@@ -2859,12 +2859,27 @@
                 setCloudSyncStatus('syncing');
                 const timeoutId = setTimeout(async () => {
                     try {
-                        await firestoreDb.collection('user_progress').doc(cloudUser.uid).set({
+                        const userDocRef = firestoreDb.collection('user_progress').doc(cloudUser.uid);
+                        
+                        // Obtenemos el documento previo para guardar una copia de seguridad histórica si hay cambios importantes
+                        const prevDoc = await userDocRef.get();
+                        const updatePayload = {
                             progress: data,
                             email: cloudUser.email,
                             displayName: cloudUser.displayName,
                             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                        }, { merge: true });
+                        };
+
+                        if (prevDoc.exists) {
+                            const prevData = prevDoc.data();
+                            // Guardar la versión anterior como 'backupCopy' para que el usuario siempre tenga 1 copia de respaldo extra
+                            if (prevData && prevData.progress) {
+                                updatePayload.backupCopy = prevData.progress;
+                                updatePayload.backupUpdatedAt = prevData.updatedAt || firebase.firestore.FieldValue.serverTimestamp();
+                            }
+                        }
+
+                        await userDocRef.set(updatePayload, { merge: true });
                         setCloudSyncStatus('saved');
                         setLastCloudSave(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
                     } catch (saveErr) {
@@ -3386,12 +3401,36 @@
                             <img src="./logo.png" alt="LingoTube" className="w-8 h-8 rounded-full shadow-md" />
                             LingoTube
                         </div>
-                        <div className="flex gap-4 font-bold text-lg">
+                        <div className="flex items-center gap-3 font-bold text-lg">
+                            {/* Indicador de estado en la nube */}
+                            <button
+                                onClick={() => setCurrentTab('profile')}
+                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold transition-all border shadow-2xs"
+                                title={cloudUser ? (cloudSyncStatus === 'syncing' ? 'Sincronizando con la nube...' : 'Sincronizado con Google') : 'Toca para iniciar sesión con Google'}
+                                style={{
+                                    backgroundColor: cloudUser ? (cloudSyncStatus === 'syncing' ? '#e0f2fe' : '#ecfdf5') : '#f3f4f6',
+                                    borderColor: cloudUser ? (cloudSyncStatus === 'syncing' ? '#7dd3fc' : '#a7f3d0') : '#e5e7eb',
+                                    color: cloudUser ? (cloudSyncStatus === 'syncing' ? '#0369a1' : '#047857') : '#6b7280'
+                                }}
+                            >
+                                <Icon 
+                                    name="Cloud" 
+                                    size={14} 
+                                    className={cloudSyncStatus === 'syncing' ? "animate-pulse" : ""} 
+                                />
+                                <span className="hidden sm:inline">
+                                    {cloudUser ? (cloudSyncStatus === 'syncing' ? 'Sincronizando' : 'Nube activa') : 'Sin sincronizar'}
+                                </span>
+                                {cloudUser && (
+                                    <span className={`w-1.5 h-1.5 rounded-full ${cloudSyncStatus === 'syncing' ? 'bg-sky-500 animate-ping' : 'bg-emerald-500'}`}></span>
+                                )}
+                            </button>
+
                             <button onClick={() => setShowSearchModal(true)} className="flex items-center gap-1 text-gray-500 hover:text-gray-900 transition-colors">
-                                <Icon name="Search" color="currentColor" size={24} />
+                                <Icon name="Search" color="currentColor" size={22} />
                             </button>
                             <div className="flex items-center gap-1 text-duoblue">
-                                <Icon name="CheckCircle" color="currentColor" />
+                                <Icon name="CheckCircle" color="currentColor" size={22} />
                                 <span>{totalClassesDone}</span>
                             </div>
                         </div>
@@ -3836,46 +3875,23 @@
                         </div>
                     </div>
 
-                    {/* CSV UPLOAD SECTION */}
+                    {/* CSV SYNC SECTION (CLEANED) */}
                     <div className="bg-white rounded-2xl p-5 mb-6 border border-gray-200 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="bg-duoblue/20 p-2 rounded-xl text-duoblue"><Icon name="Database" size={24} /></div>
-                                <h2 className="font-bold text-lg text-gray-900">Sincronización de Datos</h2>
+                                <div className="bg-duoblue/20 p-2.5 rounded-2xl text-duoblue"><Icon name="Database" size={24} /></div>
+                                <div>
+                                    <h2 className="font-bold text-lg text-gray-900 leading-tight">Actualizar Clases</h2>
+                                    <p className="text-xs text-duotext">Sincroniza los temarios desde GitHub</p>
+                                </div>
                             </div>
-                            <button onClick={syncFromServer} className="bg-duoblue/20 text-duoblue hover:bg-duoblue/30 p-2 rounded-xl flex items-center gap-1 text-sm font-bold transition-colors">
-                                <Icon name="DownloadCloud" size={18} /> Sync
+                            <button 
+                                onClick={syncFromServer} 
+                                className="bg-duoblue hover:bg-duoblueDark text-white px-3.5 py-2 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                            >
+                                <Icon name="DownloadCloud" size={16} /> Sync
                             </button>
                         </div>
-                        <p className="text-sm text-duotext mb-6 text-yellow-400 font-medium">
-                            ⚠️ Presiona el botón "Sync" arriba a la derecha para actualizar tus clases directamente desde tu GitHub, o sube los archivos de forma manual abajo.
-                        </p>
-                        
-                        {['beginner', 'intermediate', 'advanced'].map(lvl => {
-                            const nameMap = { beginner: 'Principiante', intermediate: 'Intermedio', advanced: 'Avanzado' };
-                            const classKey = lvl, reviewKey = `${lvl}Review`;
-                            const classesLoaded = courseData[classKey] && courseData[classKey].length > 0;
-                            const reviewsLoaded = courseData[reviewKey] && courseData[reviewKey].length > 0;
-                            return (
-                                <div key={lvl} className="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                                    <h3 className="font-bold text-md mb-3 text-gray-900 border-b border-gray-200 pb-2">{nameMap[lvl]}</h3>
-                                    <div className="mb-4">
-                                        <label className="flex items-center justify-between mb-2">
-                                            <span className="font-bold text-sm text-duotext">Clases Originales</span>
-                                            {classesLoaded ? <span className="text-xs font-bold text-duogreen flex items-center gap-1"><Icon name="Check" size={14}/> {courseData[classKey].length} cargadas</span> : <span className="text-xs font-bold text-orange-400">Falta subir</span>}
-                                        </label>
-                                        <input type="file" accept=".csv" onChange={(e) => { if(e.target.files[0]) handleFileUpload(classKey, e.target.files[0]); }} className="block w-full text-xs text-duotext file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:font-bold file:bg-duoblue/20 file:text-duoblue cursor-pointer" />
-                                    </div>
-                                    <div>
-                                        <label className="flex items-center justify-between mb-2">
-                                            <span className="font-bold text-sm text-duotext">Repasos de 18m</span>
-                                            {reviewsLoaded ? <span className="text-xs font-bold text-duogold flex items-center gap-1"><Icon name="Check" size={14}/> {courseData[reviewKey].length} cargados</span> : <span className="text-xs font-bold text-orange-400">Falta subir</span>}
-                                        </label>
-                                        <input type="file" accept=".csv" onChange={(e) => { if(e.target.files[0]) handleFileUpload(reviewKey, e.target.files[0]); }} className="block w-full text-xs text-duotext file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:font-bold file:bg-duogold/20 file:text-duogold cursor-pointer" />
-                                    </div>
-                                </div>
-                            );
-                        })}
                     </div>
                 </div>
             );
