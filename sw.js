@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lingotube-v9';
+const CACHE_NAME = 'lingotube-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -67,59 +67,45 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // ESTRATEGIA NETWORK-FIRST PARA NAVEGACIÓN (HTML):
-  // Asegura que si hay internet, el PC y celular siempre descarguen el index.html más reciente
-  // y solo use la caché si el usuario está completamente desconectado (modo offline).
-  if (e.request.mode === 'navigate') {
-    e.respondWith(
-      fetch(e.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const resClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resClone));
-          }
-          return networkResponse;
-        })
-        .catch(async () => {
-          const cache = await caches.open(CACHE_NAME);
-          const fallback = await cache.match('./index.html', { ignoreSearch: true })
-                         || await cache.match('./', { ignoreSearch: true });
-          if (fallback) return fallback;
-
-          return new Response(
-            '<html><body style="font-family:sans-serif;padding:2rem;text-align:center;">' +
-            '<h1>Modo Offline</h1>' +
-            '<p>Por favor conéctate a internet para sincronizar tus clases con la nube.</p>' +
-            '</body></html>',
-            { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-          );
-        })
-    );
-    return;
-  }
-
-  // Para recursos estáticos (scripts, librerías, css): Cache-first con actualización en background
   e.respondWith(
     caches.match(e.request, { ignoreSearch: true }).then((cachedResponse) => {
       if (cachedResponse) {
-        e.waitUntil(
-          fetch(e.request).then((res) => {
-            if (res && res.status === 200 && res.type !== 'opaque') {
-              caches.open(CACHE_NAME).then(cache => cache.put(e.request, res.clone()));
-            }
-          }).catch(() => {})
-        );
-        return cachedResponse;
+          // Si está en cache, actualizar en background para futuras visitas (solo recursos no opacos)
+          e.waitUntil(
+              fetch(e.request).then((res) => {
+                  if (res && res.status === 200 && res.type !== 'opaque') {
+                      caches.open(CACHE_NAME).then(cache => cache.put(e.request, res.clone()));
+                  }
+              }).catch(() => {})
+          );
+          return cachedResponse;
       }
 
+      // Si NO está en cache, ir a la red
       return fetch(e.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type !== 'opaque') {
-          const resClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(e.request, resClone));
-        }
-        return networkResponse;
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type !== 'opaque') {
+              const resClone = networkResponse.clone();
+              caches.open(CACHE_NAME).then(cache => cache.put(e.request, resClone));
+          }
+          return networkResponse;
       }).catch(async () => {
-        return new Response('', { status: 408, statusText: 'Offline' });
+          // Si falla la red, intentar usar el index.html como fallback para navegación
+          if (e.request.mode === 'navigate') {
+              const cache = await caches.open(CACHE_NAME);
+              const fallback = await cache.match('./index.html', { ignoreSearch: true }) 
+                               || await cache.match('./', { ignoreSearch: true });
+              if (fallback) return fallback;
+              
+              // Fallback extremo
+              return new Response(
+                  '<html><body style="font-family:sans-serif;padding:2rem;text-align:center;">' +
+                  '<h1>Modo Offline</h1>' +
+                  '<p>Por favor conéctate a WiFi un momento para cargar la app por primera vez y poder usarla sin internet.</p>' +
+                  '</body></html>',
+                  { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+              );
+          }
+          return new Response('', { status: 408, statusText: 'Offline' });
       });
     })
   );
