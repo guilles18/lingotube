@@ -2780,85 +2780,118 @@
             const [cloudUser, setCloudUser] = React.useState(null);
             const [cloudSyncStatus, setCloudSyncStatus] = React.useState('idle'); // 'idle' | 'syncing' | 'saved' | 'error'
             const [lastCloudSave, setLastCloudSave] = React.useState(null);
+            const [cloudClassesCount, setCloudClassesCount] = React.useState(null);
             const isInitialCloudSyncDone = React.useRef(false);
             const isMergingFromCloud = React.useRef(false);
             const lastSavedJsonRef = React.useRef(JSON.stringify(data));
 
-            // Escuchar cambios de sesión de Google
+            // Función pura de fusión de datos locales y remotos (unión completa sin pérdidas)
+            const mergeCloudProgress = (local, cp) => {
+                if (!cp) return local;
+                return {
+                    completed: {
+                        beginner: Array.from(new Set([...(local.completed?.beginner || []), ...(cp.completed?.beginner || [])])),
+                        intermediate: Array.from(new Set([...(local.completed?.intermediate || []), ...(cp.completed?.intermediate || [])])),
+                        advanced: Array.from(new Set([...(local.completed?.advanced || []), ...(cp.completed?.advanced || [])]))
+                    },
+                    reviews: {
+                        beginner: Array.from(new Set([...(local.reviews?.beginner || []), ...(cp.reviews?.beginner || [])])),
+                        intermediate: Array.from(new Set([...(local.reviews?.intermediate || []), ...(cp.reviews?.intermediate || [])])),
+                        advanced: Array.from(new Set([...(local.reviews?.advanced || []), ...(cp.reviews?.advanced || [])]))
+                    },
+                    bookmarks: {
+                        beginner: Array.from(new Set([...(local.bookmarks?.beginner || []), ...(cp.bookmarks?.beginner || [])])),
+                        intermediate: Array.from(new Set([...(local.bookmarks?.intermediate || []), ...(cp.bookmarks?.intermediate || [])])),
+                        advanced: Array.from(new Set([...(local.bookmarks?.advanced || []), ...(cp.bookmarks?.advanced || [])]))
+                    },
+                    reviewedBookmarks: {
+                        beginner: Array.from(new Set([...(local.reviewedBookmarks?.beginner || []), ...(cp.reviewedBookmarks?.beginner || [])])),
+                        intermediate: Array.from(new Set([...(local.reviewedBookmarks?.intermediate || []), ...(cp.reviewedBookmarks?.intermediate || [])])),
+                        advanced: Array.from(new Set([...(local.reviewedBookmarks?.advanced || []), ...(cp.reviewedBookmarks?.advanced || [])]))
+                    },
+                    notes: { ...(local.notes || {}), ...(cp.notes || {}) },
+                    chunks: { ...(local.chunks || {}), ...(cp.chunks || {}) },
+                    routineProgress: { ...(local.routineProgress || {}), ...(cp.routineProgress || {}) }
+                };
+            };
+
+            // Escuchar cambios de sesión de Google y sincronizar en tiempo real con Firestore
             React.useEffect(() => {
                 if (!firebaseAuth) return;
-                const unsubscribe = firebaseAuth.onAuthStateChanged(async (user) => {
+                let unsubscribeSnapshot = null;
+
+                const unsubscribeAuth = firebaseAuth.onAuthStateChanged(async (user) => {
                     setCloudUser(user);
+                    if (unsubscribeSnapshot) {
+                        unsubscribeSnapshot();
+                        unsubscribeSnapshot = null;
+                    }
+
                     if (user && firestoreDb) {
                         setCloudSyncStatus('syncing');
-                        try {
-                            const docRef = firestoreDb.collection('user_progress').doc(user.uid);
-                            // Timeout de seguridad de 6s para evitar que una red lenta o conexión colgada congele la UI
-                            const docSnap = await Promise.race([
-                                docRef.get(),
-                                new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000))
-                            ]);
-                            if (docSnap && docSnap.exists) {
+                        const docRef = firestoreDb.collection('user_progress').doc(user.uid);
+
+                        // Escucha en tiempo real (onSnapshot): cualquier avance en celular o PC se refleja automáticamente
+                        unsubscribeSnapshot = docRef.onSnapshot(async (docSnap) => {
+                            if (docSnap.exists) {
                                 const cloudData = docSnap.data();
                                 if (cloudData && cloudData.progress) {
-                                    isMergingFromCloud.current = true;
-                                    setData(local => {
-                                        const cp = cloudData.progress;
-                                        const merged = {
-                                            completed: {
-                                                beginner: Array.from(new Set([...(local.completed?.beginner || []), ...(cp.completed?.beginner || [])])),
-                                                intermediate: Array.from(new Set([...(local.completed?.intermediate || []), ...(cp.completed?.intermediate || [])])),
-                                                advanced: Array.from(new Set([...(local.completed?.advanced || []), ...(cp.completed?.advanced || [])]))
-                                            },
-                                            reviews: {
-                                                beginner: Array.from(new Set([...(local.reviews?.beginner || []), ...(cp.reviews?.beginner || [])])),
-                                                intermediate: Array.from(new Set([...(local.reviews?.intermediate || []), ...(cp.reviews?.intermediate || [])])),
-                                                advanced: Array.from(new Set([...(local.reviews?.advanced || []), ...(cp.reviews?.advanced || [])]))
-                                            },
-                                            bookmarks: {
-                                                beginner: Array.from(new Set([...(local.bookmarks?.beginner || []), ...(cp.bookmarks?.beginner || [])])),
-                                                intermediate: Array.from(new Set([...(local.bookmarks?.intermediate || []), ...(cp.bookmarks?.intermediate || [])])),
-                                                advanced: Array.from(new Set([...(local.bookmarks?.advanced || []), ...(cp.bookmarks?.advanced || [])]))
-                                            },
-                                            reviewedBookmarks: {
-                                                beginner: Array.from(new Set([...(local.reviewedBookmarks?.beginner || []), ...(cp.reviewedBookmarks?.beginner || [])])),
-                                                intermediate: Array.from(new Set([...(local.reviewedBookmarks?.intermediate || []), ...(cp.reviewedBookmarks?.intermediate || [])])),
-                                                advanced: Array.from(new Set([...(local.reviewedBookmarks?.advanced || []), ...(cp.reviewedBookmarks?.advanced || [])]))
-                                            },
-                                            notes: { ...(local.notes || {}), ...(cp.notes || {}) },
-                                            chunks: { ...(local.chunks || {}), ...(cp.chunks || {}) },
-                                            routineProgress: { ...(local.routineProgress || {}), ...(cp.routineProgress || {}) }
-                                        };
-                                        lastSavedJsonRef.current = JSON.stringify(merged);
-                                        return merged;
-                                    });
+                                    const cp = cloudData.progress;
+                                    const totalCloudDone = (cp.completed?.beginner?.length || 0) + 
+                                                           (cp.completed?.intermediate?.length || 0) + 
+                                                           (cp.completed?.advanced?.length || 0);
+                                    setCloudClassesCount(totalCloudDone);
+
+                                    // Si los datos remotos son diferentes a lo guardado en memoria, fusionar inmediatamente
+                                    const cloudJson = JSON.stringify(cp);
+                                    if (cloudJson !== lastSavedJsonRef.current) {
+                                        isMergingFromCloud.current = true;
+                                        setData(local => {
+                                            const merged = mergeCloudProgress(local, cp);
+                                            lastSavedJsonRef.current = JSON.stringify(merged);
+                                            return merged;
+                                        });
+                                        setTimeout(() => {
+                                            isMergingFromCloud.current = false;
+                                        }, 400);
+                                    }
                                 }
                                 if (cloudData.updatedAt) {
                                     setLastCloudSave(new Date(cloudData.updatedAt.toDate ? cloudData.updatedAt.toDate() : cloudData.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
                                 }
+                                isInitialCloudSyncDone.current = true;
+                                setCloudSyncStatus('saved');
                             } else {
-                                // Primera vez: guardar los datos actuales locales en la nube
-                                await docRef.set({
-                                    progress: data,
-                                    email: user.email,
-                                    displayName: user.displayName,
-                                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                                });
-                                lastSavedJsonRef.current = JSON.stringify(data);
-                                setLastCloudSave(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+                                // Primera vez que este usuario entra: subir datos locales actuales a la nube
+                                try {
+                                    await docRef.set({
+                                        progress: data,
+                                        email: user.email,
+                                        displayName: user.displayName,
+                                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                                    });
+                                    lastSavedJsonRef.current = JSON.stringify(data);
+                                    setLastCloudSave(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+                                    isInitialCloudSyncDone.current = true;
+                                    setCloudSyncStatus('saved');
+                                } catch (initErr) {
+                                    console.warn("Error inicializando progreso en Firestore:", initErr);
+                                }
                             }
-                        } catch (fetchErr) {
-                            console.warn("Sincronización inicial con Firestore:", fetchErr.message || fetchErr);
-                        } finally {
-                            isMergingFromCloud.current = false;
-                            isInitialCloudSyncDone.current = true;
-                            setCloudSyncStatus('saved');
-                        }
+                        }, (snapErr) => {
+                            console.warn("Error en sincronización en tiempo real:", snapErr);
+                            setCloudSyncStatus('error');
+                        });
                     } else {
                         setCloudSyncStatus('idle');
+                        setCloudClassesCount(null);
                     }
                 });
-                return () => unsubscribe();
+
+                return () => {
+                    unsubscribeAuth();
+                    if (unsubscribeSnapshot) unsubscribeSnapshot();
+                };
             }, []);
 
             // Guardado automático en Firestore cada vez que 'data' cambia (con debounce y control de cambios reales)
@@ -2891,17 +2924,100 @@
                         console.error("Error en autoguardado de nube:", saveErr);
                         setCloudSyncStatus('error');
                     }
-                }, 800);
+                }, 600);
 
                 const safetyTimer = setTimeout(() => {
                     setCloudSyncStatus(prev => prev === 'syncing' ? 'saved' : prev);
-                }, 3500);
+                }, 3000);
 
                 return () => {
                     clearTimeout(timeoutId);
                     clearTimeout(safetyTimer);
                 };
             }, [data, cloudUser]);
+
+            // Guardado inmediato al cambiar de pestaña o bloquear el teléfono (evita que el navegador cierre la app antes de guardar)
+            React.useEffect(() => {
+                const handleVisibilityChange = () => {
+                    if (document.visibilityState === 'hidden' && cloudUser && firestoreDb) {
+                        const currentJson = JSON.stringify(data);
+                        if (currentJson !== lastSavedJsonRef.current) {
+                            firestoreDb.collection('user_progress').doc(cloudUser.uid).set({
+                                progress: data,
+                                email: cloudUser.email,
+                                displayName: cloudUser.displayName,
+                                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                            }, { merge: true }).catch(() => {});
+                        }
+                    }
+                };
+                document.addEventListener('visibilitychange', handleVisibilityChange);
+                return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+            }, [data, cloudUser]);
+
+            // Sincronización manual forzada (descarga directa del servidor de Firestore y fusión)
+            const forceCloudSync = async () => {
+                if (!cloudUser || !firestoreDb) {
+                    alert("Debes iniciar sesión con tu cuenta de Google en este dispositivo para sincronizar.");
+                    return;
+                }
+                setCloudSyncStatus('syncing');
+                try {
+                    const docRef = firestoreDb.collection('user_progress').doc(cloudUser.uid);
+                    let docSnap = null;
+                    try {
+                        docSnap = await docRef.get({ source: 'server' });
+                    } catch (e) {
+                        docSnap = await docRef.get();
+                    }
+
+                    if (docSnap && docSnap.exists) {
+                        const cloudData = docSnap.data();
+                        if (cloudData && cloudData.progress) {
+                            const cp = cloudData.progress;
+                            let finalMerged = null;
+                            isMergingFromCloud.current = true;
+                            setData(local => {
+                                finalMerged = mergeCloudProgress(local, cp);
+                                lastSavedJsonRef.current = JSON.stringify(finalMerged);
+                                return finalMerged;
+                            });
+
+                            // Subir la fusión consolidada a la nube
+                            await docRef.set({
+                                progress: finalMerged || cp,
+                                email: cloudUser.email,
+                                displayName: cloudUser.displayName,
+                                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                            }, { merge: true });
+
+                            const totalClasses = (finalMerged?.completed?.beginner?.length || 0) + 
+                                                 (finalMerged?.completed?.intermediate?.length || 0) + 
+                                                 (finalMerged?.completed?.advanced?.length || 0);
+
+                            setCloudClassesCount(totalClasses);
+                            setLastCloudSave(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+                            setCloudSyncStatus('saved');
+                            setTimeout(() => { isMergingFromCloud.current = false; }, 400);
+
+                            alert(`¡Sincronización exitosa!\n\nSe han descargado y unificado todos tus datos de la nube.\nTotal de clases completadas: ${totalClasses}`);
+                        }
+                    } else {
+                        await docRef.set({
+                            progress: data,
+                            email: cloudUser.email,
+                            displayName: cloudUser.displayName,
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        setCloudSyncStatus('saved');
+                        alert("¡Tu progreso actual se ha respaldado en la nube con éxito!");
+                    }
+                } catch (err) {
+                    console.error("Error al forzar sincronización:", err);
+                    setCloudSyncStatus('error');
+                    alert("Error al sincronizar con la nube: " + (err.message || err));
+                }
+            };
 
             // Función para iniciar sesión con Google
             const loginWithGoogle = async () => {
@@ -2935,6 +3051,7 @@
                     setCloudUser(null);
                     setCloudSyncStatus('idle');
                     setLastCloudSave(null);
+                    setCloudClassesCount(null);
                     isInitialCloudSyncDone.current = false;
                     lastSavedJsonRef.current = '';
                 }
@@ -3087,6 +3204,8 @@
                 cloudUser,
                 cloudSyncStatus,
                 lastCloudSave,
+                cloudClassesCount,
+                forceCloudSync,
                 loginWithGoogle,
                 logoutGoogle
             };
@@ -3562,6 +3681,8 @@
                 cloudUser,
                 cloudSyncStatus,
                 lastCloudSave,
+                cloudClassesCount,
+                forceCloudSync,
                 loginWithGoogle,
                 logoutGoogle
             } = useAppStore();
@@ -4223,7 +4344,7 @@
                                         ) : (
                                             <>
                                                 <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                                <span className="text-emerald-700 font-bold text-[11px]">Guardado automático activo</span>
+                                                <span className="text-emerald-700 font-bold text-[11px]">Guardado en tiempo real activo</span>
                                             </>
                                         )}
                                     </div>
@@ -4232,6 +4353,24 @@
                                             Hoy {lastCloudSave}
                                         </span>
                                     )}
+                                </div>
+
+                                <div className="pt-2.5 border-t border-emerald-200/50 flex items-center justify-between gap-2">
+                                    <div className="text-[11px] text-gray-600">
+                                        {cloudClassesCount !== null ? (
+                                            <span>En la nube: <b className="text-gray-900 font-bold">{cloudClassesCount}</b> clases</span>
+                                        ) : (
+                                            <span>Sincronización automática</span>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={forceCloudSync}
+                                        className="bg-duoblue hover:bg-duoblueDark text-white font-bold text-xs px-3 py-1.5 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                                        title="Descargar el progreso más reciente de la nube o subir clases pendientes"
+                                    >
+                                        <Icon name="RefreshCw" size={13} className={cloudSyncStatus === 'syncing' ? "animate-spin" : ""} />
+                                        Sincronizar ahora
+                                    </button>
                                 </div>
                             </div>
                         )}
